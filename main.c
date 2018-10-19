@@ -6,7 +6,7 @@
 
 #define VGi_VERSION  "v0.4"
 
-#define HOOKS_NUM 26
+#define HOOKS_NUM 28
 SceUID g_hooks[HOOKS_NUM] = {0};
 tai_hook_ref_t g_hookrefs[HOOKS_NUM] = {0};
 
@@ -110,9 +110,7 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
             drawNextSectionIndicator(pParam, MENU_TITLE_MEMORY, MENU_TITLE_DEVICE);
             break;
         case MENU_DEVICE:
-            setTextScale(2);
-            drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_DEVICE) / 2, 5, MENU_TITLE_DEVICE);
-            setTextScale(1);
+            drawDeviceMenu(pParam);
             drawNextSectionIndicator(pParam, MENU_TITLE_MISC, "");
             break;
         case MENU_MAX:
@@ -138,6 +136,7 @@ int module_start(SceSize argc, const void *args) {
     setupGraphicsMenu();
     setupMemoryMenu();
     setupMiscMenu();
+    setupDeviceMenu();
 
     return SCE_KERNEL_START_SUCCESS;
 }

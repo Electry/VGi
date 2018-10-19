@@ -21,6 +21,7 @@ add_executable(${PROJECT_NAME}
   graphics.c
   memory.c
   misc.c
+  device.c
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -33,6 +34,7 @@ target_link_libraries(${PROJECT_NAME}
   SceKernelModulemgr_stub
   SceSysmem_stub
   SceLibc_stub
+  ScePower_stub
 )
 
 set_target_properties(${PROJECT_NAME}
