@@ -1,4 +1,3 @@
-#include <libk/stdio.h>
 #include <vitasdk.h>
 #include <taihen.h>
 

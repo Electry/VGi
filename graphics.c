@@ -1,13 +1,11 @@
-#include <libk/stdio.h>
 #include <vitasdk.h>
 #include <taihen.h>
 
 #include "display.h"
 #include "main.h"
 
-#define MAX_RENDER_TARGETS 64
-#define MAX_COLOR_SURFACES 64
-#define MAX_DEPTH_STENCIL_SURFACES 64
+#define MAX_RENDER_TARGETS          64
+#define MAX_COLOR_SURFACES          64
 
 typedef struct {
     uint8_t active;
@@ -205,9 +203,18 @@ void drawGraphics2Menu(const SceDisplayFrameBuf *pParam) {
     setTextScale(2);
     drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_GRAPHICS_2) / 2, 5, MENU_TITLE_GRAPHICS_2);
 
+    // Header
     setTextScale(1);
     drawStringF(0, 60, "Active Render Targets (%d):", g_renderTargetsCount);
-    int x = 20, y = 82;
+    if (g_renderTargetsCount > MAX_RENDER_TARGETS) {
+        char buf[32];
+        snprintf(buf, 32, "!! > %d", MAX_RENDER_TARGETS);
+        drawStringF(pParam->width - getTextWidth(buf), 60, buf);
+    }
+    drawStringF(20, 93, "   WxH         MSAA   scenesPF    memBlockUID");
+
+    // Scrollable section
+    int x = 20, y = 104;
 
     if (g_menuScroll > 0) {
         // Draw scroll indicator
@@ -215,36 +222,25 @@ void drawGraphics2Menu(const SceDisplayFrameBuf *pParam) {
         drawStringF(pParam->width - 24, y + 44, "%2d", g_menuScroll);
     }
 
-    for (int i = 0; i < MAX_RENDER_TARGETS; i++) {
+    for (int i = g_menuScroll; i < MAX_RENDER_TARGETS; i++) {
         if (g_renderTargets[i].active) {
-            char buf[32];
-            if (g_renderTargets[i].driverMemBlockBeforeCreate == 0xFFFFFFFF) {
-                snprintf(buf, 32, "memBlockNew");
-            } else {
-                snprintf(buf, 32, "memBlock");
-            }
-
-            drawStringF(x, y += 22, "%4dx%-4d%s scenesPF = %d, %s = 0x%08X",
+            drawStringF(x, y += 22, "%4dx%-10d %-8s %-8d 0x%08X %s",
                     g_renderTargets[i].params.width,
                     g_renderTargets[i].params.height,
-                    g_renderTargets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_4X ? " 4x MSAA" :
-                    (g_renderTargets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_2X ? " 2x MSAA" : ""),
+                    g_renderTargets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_4X ? "4x" :
+                    (g_renderTargets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_2X ? "2x" : ""),
                     g_renderTargets[i].params.scenesPerFrame,
-                    buf,
-                    (g_renderTargets[i].driverMemBlockBeforeCreate == 0xFFFFFFFF ?
-                    g_renderTargets[i].params.driverMemBlock : g_renderTargets[i].driverMemBlockBeforeCreate));
+                    g_renderTargets[i].params.driverMemBlock,
+                    g_renderTargets[i].driverMemBlockBeforeCreate == 0xFFFFFFFF ? "(A)" : "");
         }
 
         // Do not draw out of screen
         if (y > pParam->height - 72) {
             // Draw scroll indicator
-            drawStringF(pParam->width - 24, pParam->height - 72, "%2d", g_renderTargetsCount - i);
+            drawStringF(pParam->width - 24, pParam->height - 72, "%2d", MIN(g_renderTargetsCount, MAX_RENDER_TARGETS) - i);
             drawStringF(pParam->width - 24, pParam->height - 50, "\\/");
             break;
         }
-    }
-    if (g_renderTargetsCount > MAX_RENDER_TARGETS) {
-        drawStringF(x, y += 22, "! >%d RenderTargets", MAX_RENDER_TARGETS);
     }
 }
 
@@ -252,9 +248,18 @@ void drawGraphics3Menu(const SceDisplayFrameBuf *pParam) {
     setTextScale(2);
     drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_GRAPHICS_3) / 2, 5, MENU_TITLE_GRAPHICS_3);
 
+    // Header
     setTextScale(1);
     drawStringF(0, 60, "Color Surfaces (%d):", g_colorSurfacesCount);
-    int x = 20, y = 82;
+    if (g_colorSurfacesCount > MAX_COLOR_SURFACES) {
+        char buf[32];
+        snprintf(buf, 32, "!! > %d", MAX_COLOR_SURFACES);
+        drawStringF(pParam->width - getTextWidth(buf), 60, buf);
+    }
+    drawStringF(20, 93, "   WxH      stride   MSAA   colorFormat  surfaceType");
+
+    // Scrollable section
+    int x = 20, y = 104;
 
     if (g_menuScroll > 0) {
         // Draw scroll indicator
@@ -264,19 +269,19 @@ void drawGraphics3Menu(const SceDisplayFrameBuf *pParam) {
 
     for (int i = g_menuScroll; i < MAX_COLOR_SURFACES; i++) {
         if (g_colorSurfaces[i].surface) {
-            drawStringF(x, y += 22, "%4dx%-4d stride = %d, fmt = 0x%X, type = 0x%X%s",
+            drawStringF(x, y += 22, "%4dx%-7d %-8d %-6s 0x%-10X 0x%X",
                     g_colorSurfaces[i].width,
                     g_colorSurfaces[i].height,
                     g_colorSurfaces[i].strideInPixels,
+                    g_colorSurfaces[i].scaleMode == SCE_GXM_COLOR_SURFACE_SCALE_MSAA_DOWNSCALE ? "DS" : "",
                     g_colorSurfaces[i].colorFormat,
-                    g_colorSurfaces[i].surfaceType,
-                    g_colorSurfaces[i].scaleMode == SCE_GXM_COLOR_SURFACE_SCALE_MSAA_DOWNSCALE ? ", MSAA" : "");
+                    g_colorSurfaces[i].surfaceType);
         }
 
         // Do not draw out of screen
         if (y > pParam->height - 72) {
             // Draw scroll indicator
-            drawStringF(pParam->width - 24, pParam->height - 72, "%2d", g_colorSurfacesCount - i);
+            drawStringF(pParam->width - 24, pParam->height - 72, "%2d", MIN(g_colorSurfacesCount, MAX_COLOR_SURFACES) - i);
             drawStringF(pParam->width - 24, pParam->height - 50, "\\/");
             break;
         }

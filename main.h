@@ -39,4 +39,10 @@ void drawMemoryMenu(const SceDisplayFrameBuf *pParam);
 void setupMiscMenu();
 void drawMiscMenu(const SceDisplayFrameBuf *pParam);
 
+
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+
+int snprintf(char *s, size_t n, const char *format, ...);
+
 #endif

@@ -1,4 +1,3 @@
-#include <libk/stdio.h>
 #include <vitasdk.h>
 #include <taihen.h>
 
@@ -14,6 +13,7 @@ typedef struct {
     int size;
     void *optp;
     SceUID ret;
+    void *base;
 } VGi_MemBlock;
 
 static VGi_MemBlock g_memBlocks[MAX_MEM_BLOCKS] = {0};
@@ -29,6 +29,7 @@ static SceUID sceKernelAllocMemBlock_patched(const char *name, SceKernelMemBlock
             g_memBlocks[i].type = type;
             g_memBlocks[i].size = size;
             g_memBlocks[i].ret = ret;
+            sceKernelGetMemBlockBase(ret, &(g_memBlocks[i].base));
             goto RET;
         }
     }
@@ -62,7 +63,7 @@ const char *getMemBlockTypeString(SceKernelMemBlockType type) {
         case SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_PHYCONT_RW:
             return "PHYCONT";
         case SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_PHYCONT_NC_RW:
-            return "PHYCONT_NC";
+            return "PHY_NC";
         case SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW:
             return "CDRAM";
         default:
@@ -98,8 +99,17 @@ void drawMemoryMenu(const SceDisplayFrameBuf *pParam) {
     formatReadableSize(info.size_phycont, buf, 32);
     drawStringF(0, 104, "Free phycont: %s", buf);
 
-    drawStringF(0, 148, "Allocated MemBlocks (%d):", g_memBlocksCount);
-    int x = 20, y = 170;
+    // Header
+    drawStringF(pParam->width - 388, 104, "Allocated MemBlocks (%d):", g_memBlocksCount);
+    if (g_memBlocksCount > MAX_MEM_BLOCKS) {
+        char buf[32];
+        snprintf(buf, 32, "!! > %d", MAX_MEM_BLOCKS);
+        drawStringF(pParam->width - getTextWidth(buf), 104, buf);
+    }
+    drawStringF(20, 148, "  type         UID          base      size");
+
+    // Scrollable section
+    int x = 20, y = 165;
 
     if (g_menuScroll > 0) {
         // Draw scroll indicator
@@ -111,18 +121,19 @@ void drawMemoryMenu(const SceDisplayFrameBuf *pParam) {
         // Draw only active blocks
         if (g_memBlocks[i].active) {
             formatReadableSize(g_memBlocks[i].size, buf, 32);
-            drawStringF(x, y += 22, "%s", g_memBlocks[i].name);
+            drawStringF(x, y += 27, "'%s'", g_memBlocks[i].name);
             drawStringF(pParam->width - getTextWidth(buf) - 40, y, "%s", buf);
-            drawStringF(x + 20, y += 22, "size = %d, type = %s, uid = 0x%08X",
-                    g_memBlocks[i].size,
+            drawStringF(x + 24, y += 22, "%-9s 0x%-10X 0x%-10X %d B",
                     getMemBlockTypeString(g_memBlocks[i].type),
-                    g_memBlocks[i].ret);
+                    g_memBlocks[i].ret,
+                    g_memBlocks[i].base,
+                    g_memBlocks[i].size);
         }
 
         // Do not draw out of screen
-        if (y > pParam->height - 72) {
+        if (y > pParam->height - 94) {
             // Draw scroll indicator
-            drawStringF(pParam->width - 24, pParam->height - 72, "%2d", g_memBlocksCount - i);
+            drawStringF(pParam->width - 24, pParam->height - 72, "%2d", MIN(g_memBlocksCount, MAX_MEM_BLOCKS) - i);
             drawStringF(pParam->width - 24, pParam->height - 50, "\\/");
             break;
         }

@@ -1,13 +1,10 @@
-#include <psp2/kernel/modulemgr.h>
-#include <psp2/ctrl.h>
-#include <libk/stdio.h>
 #include <vitasdk.h>
 #include <taihen.h>
 
 #include "display.h"
 #include "main.h"
 
-#define VGi_VERSION  "v0.3"
+#define VGi_VERSION  "v0.4"
 
 #define HOOKS_NUM 26
 SceUID g_hooks[HOOKS_NUM] = {0};
@@ -79,44 +76,47 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
     // Watermark
     setBgColor(0, 0, 0, 0);
     setTextColor(10, 20, 50, 255);
-    setTextScale(5);
+    setTextScale(pParam->width == 640 ? 3 : 5);
     drawStringF(0, pParam->height - 110, "VGi %s", VGi_VERSION);
     setTextScale(2);
     drawStringF(pParam->width - getTextWidth("by Electry"), pParam->height - 66, "by Electry");
 
-    // Content
+    // Section content
     setTextColor(255, 255, 255, 255);
 
-    if (g_menuSection == MENU_APP_INFO) {
-        drawAppInfoMenu(pParam);
-        drawNextSectionIndicator(pParam, "", MENU_TITLE_GRAPHICS);
-
-    } else if (g_menuSection == MENU_GRAPHICS) {
-        drawGraphicsMenu(pParam);
-        drawNextSectionIndicator(pParam, MENU_TITLE_APP_INFO, MENU_TITLE_GRAPHICS_2);
-
-    } else if (g_menuSection == MENU_GRAPHICS_2) {
-        drawGraphics2Menu(pParam);
-        drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS, MENU_TITLE_GRAPHICS_3);
-
-    } else if (g_menuSection == MENU_GRAPHICS_3) {
-        drawGraphics3Menu(pParam);
-        drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_2, MENU_TITLE_MEMORY);
-
-    } else if (g_menuSection == MENU_MEMORY) {
-        drawMemoryMenu(pParam);
-        drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_3, MENU_TITLE_MISC);
-
-    } else if (g_menuSection == MENU_MISC) {
-        drawMiscMenu(pParam);
-        drawNextSectionIndicator(pParam, MENU_TITLE_MEMORY, MENU_TITLE_DEVICE);
-
-    } else if (g_menuSection == MENU_DEVICE) {
-        setTextScale(2);
-        drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_DEVICE) / 2, 5, MENU_TITLE_DEVICE);
-
-        setTextScale(1);
-        drawNextSectionIndicator(pParam, MENU_TITLE_MISC, "");
+    switch (g_menuSection) {
+        case MENU_APP_INFO:
+            drawAppInfoMenu(pParam);
+            drawNextSectionIndicator(pParam, "", MENU_TITLE_GRAPHICS);
+            break;
+        case MENU_GRAPHICS:
+            drawGraphicsMenu(pParam);
+            drawNextSectionIndicator(pParam, MENU_TITLE_APP_INFO, MENU_TITLE_GRAPHICS_2);
+            break;
+        case MENU_GRAPHICS_2:
+            drawGraphics2Menu(pParam);
+            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS, MENU_TITLE_GRAPHICS_3);
+            break;
+        case MENU_GRAPHICS_3:
+            drawGraphics3Menu(pParam);
+            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_2, MENU_TITLE_MEMORY);
+            break;
+        case MENU_MEMORY:
+            drawMemoryMenu(pParam);
+            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_3, MENU_TITLE_MISC);
+            break;
+        case MENU_MISC:
+            drawMiscMenu(pParam);
+            drawNextSectionIndicator(pParam, MENU_TITLE_MEMORY, MENU_TITLE_DEVICE);
+            break;
+        case MENU_DEVICE:
+            setTextScale(2);
+            drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_DEVICE) / 2, 5, MENU_TITLE_DEVICE);
+            setTextScale(1);
+            drawNextSectionIndicator(pParam, MENU_TITLE_MISC, "");
+            break;
+        case MENU_MAX:
+            break;
     }
 
 CONT:
@@ -144,6 +144,7 @@ int module_start(SceSize argc, const void *args) {
 
 int module_stop(SceSize argc, const void *args) {
 
+    // Release all hooks
     for (int i = 0; i < HOOKS_NUM; i++) {
         if (g_hooks[i] >= 0)
             taiHookRelease(g_hooks[i], g_hookrefs[i]);

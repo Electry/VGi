@@ -1,9 +1,7 @@
-#include <psp2/types.h>
-#include <psp2/display.h>
-#include <libk/stdio.h>
-#include <libk/stdarg.h>
-#include <libk/string.h>
+#include <vitasdk.h>
 #include "font_sun12x22.h"
+
+int vsnprintf(char *s, size_t n, const char *format, va_list arg);
 
 #define MAX_STRING_LENGTH 512
 
