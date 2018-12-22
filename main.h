@@ -22,6 +22,8 @@ typedef enum {
 
 extern uint8_t g_menuScroll;
 
+extern uint8_t g_vsyncKillswitch;
+
 extern SceUID g_hooks[];
 extern tai_hook_ref_t g_hookrefs[];
 

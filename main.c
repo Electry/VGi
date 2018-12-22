@@ -25,6 +25,12 @@ static void checkButtons() {
         if (buttons & SCE_CTRL_LTRIGGER) {
             g_menuVisible = !g_menuVisible;
         }
+
+        // Vsync Killswitch
+        if (g_menuVisible && g_menuSection == MENU_GRAPHICS) {
+            if (buttons & SCE_CTRL_CIRCLE)
+                g_vsyncKillswitch = !g_vsyncKillswitch;
+        }
     } else if (g_menuVisible) {
         // Move between sections
         if (buttons & SCE_CTRL_LTRIGGER) {
