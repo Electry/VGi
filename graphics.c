@@ -164,23 +164,32 @@ static int sceGxmColorSurfaceInit_patched(
     int ret = TAI_CONTINUE(int, g_hookrefs[22], surface, colorFormat, surfaceType,
             scaleMode, outputRegisterSize, width, height, strideInPixels, data);
 
-    for (int i = 0; i < MAX_COLOR_SURFACES; i++) {
+    int i = 0;
+    for (i = 0; i < MAX_COLOR_SURFACES; i++) {
+        if (g_colorSurfaces[i].surface == surface) {
+            goto RET_EXISTING;
+        }
+    }
+    for (i = 0; i < MAX_COLOR_SURFACES; i++) {
         if (!g_colorSurfaces[i].surface) {
-            g_colorSurfaces[i].surface = surface;
-            g_colorSurfaces[i].colorFormat = colorFormat;
-            g_colorSurfaces[i].surfaceType = surfaceType;
-            g_colorSurfaces[i].scaleMode = scaleMode;
-            g_colorSurfaces[i].outputRegisterSize = outputRegisterSize;
-            g_colorSurfaces[i].width = width;
-            g_colorSurfaces[i].height = height;
-            g_colorSurfaces[i].strideInPixels = strideInPixels;
-            g_colorSurfaces[i].data = data;
-            goto RET;
+            goto RET_NEW;
         }
     }
 
-RET:
+    return ret;
+
+RET_NEW:
     g_colorSurfacesCount++;
+RET_EXISTING:
+    g_colorSurfaces[i].surface = surface;
+    g_colorSurfaces[i].colorFormat = colorFormat;
+    g_colorSurfaces[i].surfaceType = surfaceType;
+    g_colorSurfaces[i].scaleMode = scaleMode;
+    g_colorSurfaces[i].outputRegisterSize = outputRegisterSize;
+    g_colorSurfaces[i].width = width;
+    g_colorSurfaces[i].height = height;
+    g_colorSurfaces[i].strideInPixels = strideInPixels;
+    g_colorSurfaces[i].data = data;
     return ret;
 }
 
