@@ -1,7 +1,7 @@
 #include <vitasdk.h>
 #include <taihen.h>
 
-#include "display.h"
+#include "osd.h"
 #include "main.h"
 
 #define VGi_VERSION  "v0.4"
@@ -64,10 +64,10 @@ static void drawNextSectionIndicator(const SceDisplayFrameBuf *pParam, const cha
     char buf[64];
 
     snprintf(buf, 64, "%s%s", strlen(L) > 0 ? "< " : "", L);
-    drawStringF(0, pParam->height - 22, "%s", buf);
+    osdDrawStringF(0, pParam->height - 22, "%s", buf);
 
     snprintf(buf, 64, "%s%s", R, strlen(R) > 0 ? " >" : "");
-    drawStringF(pParam->width - getTextWidth(buf), pParam->height - 22, "%s", buf);
+    osdDrawStringF(pParam->width - osdGetTextWidth(buf), pParam->height - 22, "%s", buf);
 }
 
 static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int sync) {
@@ -78,22 +78,22 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
     if (!g_menuVisible)
         goto CONT;
 
-    updateFrameBuf(pParam);
+    osdUpdateFrameBuf(pParam);
 
     // BG
-    setBgColor(0, 0, 0, 255);
-    clearScreen();
+    osdSetBgColor(0, 0, 0, 255);
+    osdClearScreen();
 
     // Watermark
-    setBgColor(0, 0, 0, 0);
-    setTextColor(10, 20, 50, 255);
-    setTextScale(pParam->width == 640 ? 3 : 5);
-    drawStringF(0, pParam->height - 110, "VGi %s", VGi_VERSION);
-    setTextScale(2);
-    drawStringF(pParam->width - getTextWidth("by Electry"), pParam->height - 66, "by Electry");
+    osdSetBgColor(0, 0, 0, 0);
+    osdSetTextColor(10, 20, 50, 255);
+    osdSetTextScale(pParam->width == 640 ? 3 : 5);
+    osdDrawStringF(0, pParam->height - 110, "VGi %s", VGi_VERSION);
+    osdSetTextScale(2);
+    osdDrawStringF(pParam->width - osdGetTextWidth("by Electry"), pParam->height - 66, "by Electry");
 
     // Section content
-    setTextColor(255, 255, 255, 255);
+    osdSetTextColor(255, 255, 255, 255);
 
     switch (g_menuSection) {
         case MENU_APP_INFO:

@@ -16,7 +16,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions")
 
 add_executable(${PROJECT_NAME}
   main.c
-  display.c
+  osd.c
   appinfo.c
   graphics.c
   memory.c

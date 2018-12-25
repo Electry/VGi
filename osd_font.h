@@ -5,7 +5,7 @@
 
 #define FONTDATAMAX 11264
 
-static const unsigned char font[FONTDATAMAX] = {
+static const unsigned char g_font[FONTDATAMAX] = {
 
 	/* 0 0x00 '^@' */
 	0x00, 0x00, /* 000000000000 */

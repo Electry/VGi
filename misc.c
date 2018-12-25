@@ -1,7 +1,7 @@
 #include <vitasdk.h>
 #include <taihen.h>
 
-#include "display.h"
+#include "osd.h"
 #include "main.h"
 
 static uint8_t sceCtrlPeekBufferPositive_used = 0;
@@ -84,34 +84,34 @@ static int sceTouchRead_patched(SceUInt32 port, SceTouchData *pData, SceUInt32 n
 }
 
 void drawMiscMenu(const SceDisplayFrameBuf *pParam) {
-    setTextScale(2);
-    drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_MISC) / 2, 5, MENU_TITLE_MISC);
+    osdSetTextScale(2);
+    osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_MISC) / 2, 5, MENU_TITLE_MISC);
 
-    setTextScale(1);
-    drawStringF(0, 60, "Input handlers:");
+    osdSetTextScale(1);
+    osdDrawStringF(0, 60, "Input handlers:");
     int y = 82;
     if (sceCtrlPeekBufferPositive_used)
-        drawStringF(20, y += 22, "sceCtrlPeekBufferPositive()");
+        osdDrawStringF(20, y += 22, "sceCtrlPeekBufferPositive()");
     if (sceCtrlPeekBufferNegative_used)
-        drawStringF(20, y += 22, "sceCtrlPeekBufferNegative()");
+        osdDrawStringF(20, y += 22, "sceCtrlPeekBufferNegative()");
     if (sceCtrlReadBufferPositive_used)
-        drawStringF(20, y += 22, "sceCtrlReadBufferPositive()");
+        osdDrawStringF(20, y += 22, "sceCtrlReadBufferPositive()");
     if (sceCtrlReadBufferNegative_used)
-        drawStringF(20, y += 22, "sceCtrlReadBufferNegative()");
+        osdDrawStringF(20, y += 22, "sceCtrlReadBufferNegative()");
     if (sceMotionGetState_used)
-        drawStringF(20, y += 22, "sceMotionGetState()");
+        osdDrawStringF(20, y += 22, "sceMotionGetState()");
     if (sceMotionGetSensorState_used)
-        drawStringF(20, y += 22, "sceMotionGetSensorState()");
+        osdDrawStringF(20, y += 22, "sceMotionGetSensorState()");
     if (sceMotionGetBasicOrientation_used)
-        drawStringF(20, y += 22, "sceMotionGetBasicOrientation()");
+        osdDrawStringF(20, y += 22, "sceMotionGetBasicOrientation()");
     if (sceTouchPeek_front)
-        drawStringF(20, y += 22, "sceTouchPeek( FRONT )");
+        osdDrawStringF(20, y += 22, "sceTouchPeek( FRONT )");
     if (sceTouchPeek_back)
-        drawStringF(20, y += 22, "sceTouchPeek( BACK )");
+        osdDrawStringF(20, y += 22, "sceTouchPeek( BACK )");
     if (sceTouchRead_front)
-        drawStringF(20, y += 22, "sceTouchRead( FRONT )");
+        osdDrawStringF(20, y += 22, "sceTouchRead( FRONT )");
     if (sceTouchRead_back)
-        drawStringF(20, y += 22, "sceTouchRead( BACK )");
+        osdDrawStringF(20, y += 22, "sceTouchRead( BACK )");
 }
 
 void setupMiscMenu() {

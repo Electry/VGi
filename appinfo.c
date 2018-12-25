@@ -1,7 +1,7 @@
 #include <vitasdk.h>
 #include <taihen.h>
 
-#include "display.h"
+#include "osd.h"
 #include "main.h"
 
 // app info
@@ -14,17 +14,17 @@ static char g_appTitleID[12] = {0};
 static char g_appRegion[10] = {0};
 
 void drawAppInfoMenu(const SceDisplayFrameBuf *pParam) {
-    setTextScale(2);
-    drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_APP_INFO) / 2, 5, MENU_TITLE_APP_INFO);
+    osdSetTextScale(2);
+    osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_APP_INFO) / 2, 5, MENU_TITLE_APP_INFO);
 
-    setTextScale(1);
-    drawStringF(0, 60,  "Title:       %s", g_appTitle);
-    drawStringF(0, 82,  "STitle:      %s", g_appSTitle);
-    drawStringF(0, 104, "ContentID:   %s", g_appContent);
-    drawStringF(0, 126, "TitleID:     %s [ %s ]", g_appTitleID, g_appRegion);
-    drawStringF(0, 148, "Module:      %s", g_appModuleInfo.name);
-    drawStringF(0, 170, "Module path: %s", g_appSceModuleInfo.path);
-    drawStringF(0, 192, "Module NID:  0x%08X", g_appModuleInfo.module_nid);
+    osdSetTextScale(1);
+    osdDrawStringF(0, 60,  "Title:       %s", g_appTitle);
+    osdDrawStringF(0, 82,  "STitle:      %s", g_appSTitle);
+    osdDrawStringF(0, 104, "ContentID:   %s", g_appContent);
+    osdDrawStringF(0, 126, "TitleID:     %s [ %s ]", g_appTitleID, g_appRegion);
+    osdDrawStringF(0, 148, "Module:      %s", g_appModuleInfo.name);
+    osdDrawStringF(0, 170, "Module path: %s", g_appSceModuleInfo.path);
+    osdDrawStringF(0, 192, "Module NID:  0x%08X", g_appModuleInfo.module_nid);
 }
 
 void setupAppInfoMenu() {

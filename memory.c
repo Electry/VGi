@@ -1,7 +1,7 @@
 #include <vitasdk.h>
 #include <taihen.h>
 
-#include "display.h"
+#include "osd.h"
 #include "main.h"
 
 #define MAX_MEM_BLOCKS 64
@@ -82,10 +82,10 @@ void formatReadableSize(int bytes, char *out, size_t out_size) {
 }
 
 void drawMemoryMenu(const SceDisplayFrameBuf *pParam) {
-    setTextScale(2);
-    drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_MEMORY) / 2, 5, MENU_TITLE_MEMORY);
+    osdSetTextScale(2);
+    osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_MEMORY) / 2, 5, MENU_TITLE_MEMORY);
 
-    setTextScale(1);
+    osdSetTextScale(1);
 
     SceKernelFreeMemorySizeInfo info;
     info.size = sizeof(SceKernelFreeMemorySizeInfo);
@@ -93,37 +93,37 @@ void drawMemoryMenu(const SceDisplayFrameBuf *pParam) {
 
     char buf[32];
     formatReadableSize(info.size_user, buf, 32);
-    drawStringF(0, 60,  "Free RAM:     %s", buf);
+    osdDrawStringF(0, 60,  "Free RAM:     %s", buf);
     formatReadableSize(info.size_cdram, buf, 32);
-    drawStringF(0, 82,  "Free VRAM:    %s", buf);
+    osdDrawStringF(0, 82,  "Free VRAM:    %s", buf);
     formatReadableSize(info.size_phycont, buf, 32);
-    drawStringF(0, 104, "Free phycont: %s", buf);
+    osdDrawStringF(0, 104, "Free phycont: %s", buf);
 
     // Header
-    drawStringF(pParam->width - 388, 104, "Allocated MemBlocks (%d):", g_memBlocksCount);
+    osdDrawStringF(pParam->width - 388, 104, "Allocated MemBlocks (%d):", g_memBlocksCount);
     if (g_memBlocksCount > MAX_MEM_BLOCKS) {
         char buf[32];
         snprintf(buf, 32, "!! > %d", MAX_MEM_BLOCKS);
-        drawStringF(pParam->width - getTextWidth(buf), 104, buf);
+        osdDrawStringF(pParam->width - osdGetTextWidth(buf), 104, buf);
     }
-    drawStringF(20, 148, "  type         UID          base      size");
+    osdDrawStringF(20, 148, "  type         UID          base      size");
 
     // Scrollable section
     int x = 20, y = 165;
 
     if (g_menuScroll > 0) {
         // Draw scroll indicator
-        drawStringF(pParam->width - 24, y + 22, "/\\");
-        drawStringF(pParam->width - 24, y + 44, "%2d", g_menuScroll);
+        osdDrawStringF(pParam->width - 24, y + 22, "/\\");
+        osdDrawStringF(pParam->width - 24, y + 44, "%2d", g_menuScroll);
     }
 
     for (int i = g_menuScroll; i < MAX_MEM_BLOCKS; i++) {
         // Draw only active blocks
         if (g_memBlocks[i].active) {
             formatReadableSize(g_memBlocks[i].size, buf, 32);
-            drawStringF(x, y += 27, "'%s'", g_memBlocks[i].name);
-            drawStringF(pParam->width - getTextWidth(buf) - 40, y, "%s", buf);
-            drawStringF(x + 24, y += 22, "%-9s 0x%-10X 0x%-10X %d B",
+            osdDrawStringF(x, y += 27, "'%s'", g_memBlocks[i].name);
+            osdDrawStringF(pParam->width - osdGetTextWidth(buf) - 40, y, "%s", buf);
+            osdDrawStringF(x + 24, y += 22, "%-9s 0x%-10X 0x%-10X %d B",
                     getMemBlockTypeString(g_memBlocks[i].type),
                     g_memBlocks[i].ret,
                     g_memBlocks[i].base,
@@ -133,8 +133,8 @@ void drawMemoryMenu(const SceDisplayFrameBuf *pParam) {
         // Do not draw out of screen
         if (y > pParam->height - 94) {
             // Draw scroll indicator
-            drawStringF(pParam->width - 24, pParam->height - 72, "%2d", MIN(g_memBlocksCount, MAX_MEM_BLOCKS) - i);
-            drawStringF(pParam->width - 24, pParam->height - 50, "\\/");
+            osdDrawStringF(pParam->width - 24, pParam->height - 72, "%2d", MIN(g_memBlocksCount, MAX_MEM_BLOCKS) - i);
+            osdDrawStringF(pParam->width - 24, pParam->height - 50, "\\/");
             break;
         }
     }

@@ -1,7 +1,7 @@
 #include <vitasdk.h>
 #include <taihen.h>
 
-#include "display.h"
+#include "osd.h"
 #include "main.h"
 
 #define MAX_RENDER_TARGETS          64
@@ -190,77 +190,77 @@ static int sceGxmInitialize_patched(const SceGxmInitializeParams *params) {
 }
 
 void drawGraphicsMenu(const SceDisplayFrameBuf *pParam) {
-    setTextScale(2);
-    drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_GRAPHICS) / 2, 5, MENU_TITLE_GRAPHICS);
+    osdSetTextScale(2);
+    osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_GRAPHICS) / 2, 5, MENU_TITLE_GRAPHICS);
 
-    setTextScale(1);
-    drawStringF(0, 60,  "Framebuffer:        %dx%d, stride = %d", pParam->width, pParam->height, pParam->pitch);
-    drawStringF(0, 82,  "Max Pending Swaps:  %d", g_gxmInitializeParams.displayQueueMaxPendingCount);
-    drawStringF(0, 104, "DQ Callback:        0x%X", g_gxmInitializeParams.displayQueueCallback);
-    drawStringF(0, 126, "Param. buf. size:   %d B", g_gxmInitializeParams.parameterBufferSize);
+    osdSetTextScale(1);
+    osdDrawStringF(0, 60,  "Framebuffer:        %dx%d, stride = %d", pParam->width, pParam->height, pParam->pitch);
+    osdDrawStringF(0, 82,  "Max Pending Swaps:  %d", g_gxmInitializeParams.displayQueueMaxPendingCount);
+    osdDrawStringF(0, 104, "DQ Callback:        0x%X", g_gxmInitializeParams.displayQueueCallback);
+    osdDrawStringF(0, 126, "Param. buf. size:   %d B", g_gxmInitializeParams.parameterBufferSize);
 
-    drawStringF(0, 170, "VSync mechanisms:");
+    osdDrawStringF(0, 170, "VSync mechanisms:");
     if (!g_vsyncKillswitch) {
-        setTextColor(150, 255, 150, 255);
-        drawStringF(pParam->width - getTextWidth("DEFAULT (O)") - 10, 170, "DEFAULT (O)");
+        osdSetTextColor(150, 255, 150, 255);
+        osdDrawStringF(pParam->width - osdGetTextWidth("DEFAULT (O)") - 10, 170, "DEFAULT (O)");
     } else if (g_vsyncKillswitch == 1) {
-        setTextColor(255, 255, 150, 255);
-        drawStringF(pParam->width - getTextWidth("ALLOW 1 (O)") - 10, 170, "ALLOW 1 (O)");
+        osdSetTextColor(255, 255, 150, 255);
+        osdDrawStringF(pParam->width - osdGetTextWidth("ALLOW 1 (O)") - 10, 170, "ALLOW 1 (O)");
     } else if (g_vsyncKillswitch == 2) {
-        setTextColor(255, 150, 150, 255);
-        drawStringF(pParam->width - getTextWidth("DROP ALL (O)") - 10, 170, "DROP ALL (O)");
+        osdSetTextColor(255, 150, 150, 255);
+        osdDrawStringF(pParam->width - osdGetTextWidth("DROP ALL (O)") - 10, 170, "DROP ALL (O)");
     }
-    setTextColor(255, 255, 255, 255);
+    osdSetTextColor(255, 255, 255, 255);
 
     int y = 192;
     if (sceDisplayGetRefreshRate_used)
-        drawStringF(20, y += 22, "sceDisplayGetRefreshRate()");
+        osdDrawStringF(20, y += 22, "sceDisplayGetRefreshRate()");
     if (sceDisplayGetVcount_used)
-        drawStringF(20, y += 22, "sceDisplayGetVcount()");
+        osdDrawStringF(20, y += 22, "sceDisplayGetVcount()");
     if (sceDisplayWaitVblankStart_used)
-        drawStringF(20, y += 22, "sceDisplayWaitVblankStart()");
+        osdDrawStringF(20, y += 22, "sceDisplayWaitVblankStart()");
     if (sceDisplayWaitVblankStartCB_used)
-        drawStringF(20, y += 22, "sceDisplayWaitVblankStartCB()");
+        osdDrawStringF(20, y += 22, "sceDisplayWaitVblankStartCB()");
     if (sceDisplayWaitVblankStartMulti_used)
-        drawStringF(20, y += 22, "sceDisplayWaitVblankStartMulti( %d )", sceDisplayWaitVblankStartMulti_vcount);
+        osdDrawStringF(20, y += 22, "sceDisplayWaitVblankStartMulti( %d )", sceDisplayWaitVblankStartMulti_vcount);
     if (sceDisplayWaitVblankStartMultiCB_used)
-        drawStringF(20, y += 22, "sceDisplayWaitVblankStartMultiCB( %d )", sceDisplayWaitVblankStartMultiCB_vcount);
+        osdDrawStringF(20, y += 22, "sceDisplayWaitVblankStartMultiCB( %d )", sceDisplayWaitVblankStartMultiCB_vcount);
     if (sceDisplayWaitSetFrameBuf_used)
-        drawStringF(20, y += 22, "sceDisplayWaitSetFrameBuf()");
+        osdDrawStringF(20, y += 22, "sceDisplayWaitSetFrameBuf()");
     if (sceDisplayWaitSetFrameBufCB_used)
-        drawStringF(20, y += 22, "sceDisplayWaitSetFrameBufCB()");
+        osdDrawStringF(20, y += 22, "sceDisplayWaitSetFrameBufCB()");
     if (sceDisplayWaitSetFrameBufMulti_used)
-        drawStringF(20, y += 22, "sceDisplayWaitSetFrameBufMulti( %d )", sceDisplayWaitSetFrameBufMulti_vcount);
+        osdDrawStringF(20, y += 22, "sceDisplayWaitSetFrameBufMulti( %d )", sceDisplayWaitSetFrameBufMulti_vcount);
     if (sceDisplayWaitSetFrameBufMultiCB_used)
-        drawStringF(20, y += 22, "sceDisplayWaitSetFrameBufMultiCB( %d )", sceDisplayWaitSetFrameBufMultiCB_vcount);
+        osdDrawStringF(20, y += 22, "sceDisplayWaitSetFrameBufMultiCB( %d )", sceDisplayWaitSetFrameBufMultiCB_vcount);
 }
 
 void drawGraphics2Menu(const SceDisplayFrameBuf *pParam) {
-    setTextScale(2);
-    drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_GRAPHICS_2) / 2, 5, MENU_TITLE_GRAPHICS_2);
+    osdSetTextScale(2);
+    osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_GRAPHICS_2) / 2, 5, MENU_TITLE_GRAPHICS_2);
 
     // Header
-    setTextScale(1);
-    drawStringF(0, 60, "Active Render Targets (%d):", g_renderTargetsCount);
+    osdSetTextScale(1);
+    osdDrawStringF(0, 60, "Active Render Targets (%d):", g_renderTargetsCount);
     if (g_renderTargetsCount > MAX_RENDER_TARGETS) {
         char buf[32];
         snprintf(buf, 32, "!! > %d", MAX_RENDER_TARGETS);
-        drawStringF(pParam->width - getTextWidth(buf), 60, buf);
+        osdDrawStringF(pParam->width - osdGetTextWidth(buf), 60, buf);
     }
-    drawStringF(20, 93, "   WxH         MSAA   scenesPF    memBlockUID");
+    osdDrawStringF(20, 93, "   WxH         MSAA   scenesPF    memBlockUID");
 
     // Scrollable section
     int x = 20, y = 104;
 
     if (g_menuScroll > 0) {
         // Draw scroll indicator
-        drawStringF(pParam->width - 24, y + 22, "/\\");
-        drawStringF(pParam->width - 24, y + 44, "%2d", g_menuScroll);
+        osdDrawStringF(pParam->width - 24, y + 22, "/\\");
+        osdDrawStringF(pParam->width - 24, y + 44, "%2d", g_menuScroll);
     }
 
     for (int i = g_menuScroll; i < MAX_RENDER_TARGETS; i++) {
         if (g_renderTargets[i].active) {
-            drawStringF(x, y += 22, "%4dx%-10d %-8s %-8d 0x%08X %s",
+            osdDrawStringF(x, y += 22, "%4dx%-10d %-8s %-8d 0x%08X %s",
                     g_renderTargets[i].params.width,
                     g_renderTargets[i].params.height,
                     g_renderTargets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_4X ? "4x" :
@@ -273,39 +273,39 @@ void drawGraphics2Menu(const SceDisplayFrameBuf *pParam) {
         // Do not draw out of screen
         if (y > pParam->height - 72) {
             // Draw scroll indicator
-            drawStringF(pParam->width - 24, pParam->height - 72, "%2d", MIN(g_renderTargetsCount, MAX_RENDER_TARGETS) - i);
-            drawStringF(pParam->width - 24, pParam->height - 50, "\\/");
+            osdDrawStringF(pParam->width - 24, pParam->height - 72, "%2d", MIN(g_renderTargetsCount, MAX_RENDER_TARGETS) - i);
+            osdDrawStringF(pParam->width - 24, pParam->height - 50, "\\/");
             break;
         }
     }
 }
 
 void drawGraphics3Menu(const SceDisplayFrameBuf *pParam) {
-    setTextScale(2);
-    drawStringF((pParam->width / 2) - getTextWidth(MENU_TITLE_GRAPHICS_3) / 2, 5, MENU_TITLE_GRAPHICS_3);
+    osdSetTextScale(2);
+    osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_GRAPHICS_3) / 2, 5, MENU_TITLE_GRAPHICS_3);
 
     // Header
-    setTextScale(1);
-    drawStringF(0, 60, "Color Surfaces (%d):", g_colorSurfacesCount);
+    osdSetTextScale(1);
+    osdDrawStringF(0, 60, "Color Surfaces (%d):", g_colorSurfacesCount);
     if (g_colorSurfacesCount > MAX_COLOR_SURFACES) {
         char buf[32];
         snprintf(buf, 32, "!! > %d", MAX_COLOR_SURFACES);
-        drawStringF(pParam->width - getTextWidth(buf), 60, buf);
+        osdDrawStringF(pParam->width - osdGetTextWidth(buf), 60, buf);
     }
-    drawStringF(20, 93, "   WxH      stride   MSAA   colorFormat  surfaceType");
+    osdDrawStringF(20, 93, "   WxH      stride   MSAA   colorFormat  surfaceType");
 
     // Scrollable section
     int x = 20, y = 104;
 
     if (g_menuScroll > 0) {
         // Draw scroll indicator
-        drawStringF(pParam->width - 24, y + 22, "/\\");
-        drawStringF(pParam->width - 24, y + 44, "%2d", g_menuScroll);
+        osdDrawStringF(pParam->width - 24, y + 22, "/\\");
+        osdDrawStringF(pParam->width - 24, y + 44, "%2d", g_menuScroll);
     }
 
     for (int i = g_menuScroll; i < MAX_COLOR_SURFACES; i++) {
         if (g_colorSurfaces[i].surface) {
-            drawStringF(x, y += 22, "%4dx%-7d %-8d %-6s 0x%-10X 0x%X",
+            osdDrawStringF(x, y += 22, "%4dx%-7d %-8d %-6s 0x%-10X 0x%X",
                     g_colorSurfaces[i].width,
                     g_colorSurfaces[i].height,
                     g_colorSurfaces[i].strideInPixels,
@@ -317,8 +317,8 @@ void drawGraphics3Menu(const SceDisplayFrameBuf *pParam) {
         // Do not draw out of screen
         if (y > pParam->height - 72) {
             // Draw scroll indicator
-            drawStringF(pParam->width - 24, pParam->height - 72, "%2d", MIN(g_colorSurfacesCount, MAX_COLOR_SURFACES) - i);
-            drawStringF(pParam->width - 24, pParam->height - 50, "\\/");
+            osdDrawStringF(pParam->width - 24, pParam->height - 72, "%2d", MIN(g_colorSurfacesCount, MAX_COLOR_SURFACES) - i);
+            osdDrawStringF(pParam->width - 24, pParam->height - 50, "\\/");
             break;
         }
     }
