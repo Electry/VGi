@@ -4,7 +4,7 @@
 #include "osd.h"
 #include "main.h"
 
-#define VGi_VERSION  "v0.4"
+#define VGi_VERSION  "v0.5"
 
 #define HOOKS_NUM 28
 SceUID g_hooks[HOOKS_NUM] = {0};
