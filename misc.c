@@ -88,30 +88,30 @@ void drawMiscMenu(const SceDisplayFrameBuf *pParam) {
     osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_MISC) / 2, 5, MENU_TITLE_MISC);
 
     osdSetTextScale(1);
-    osdDrawStringF(0, 60, "Input handlers:");
-    int y = 82;
+    osdDrawStringF(10, 60, "Input handlers:");
+    int x = 30, y = 82;
     if (sceCtrlPeekBufferPositive_used)
-        osdDrawStringF(20, y += 22, "sceCtrlPeekBufferPositive()");
+        osdDrawStringF(x, y += 22, "sceCtrlPeekBufferPositive()");
     if (sceCtrlPeekBufferNegative_used)
-        osdDrawStringF(20, y += 22, "sceCtrlPeekBufferNegative()");
+        osdDrawStringF(x, y += 22, "sceCtrlPeekBufferNegative()");
     if (sceCtrlReadBufferPositive_used)
-        osdDrawStringF(20, y += 22, "sceCtrlReadBufferPositive()");
+        osdDrawStringF(x, y += 22, "sceCtrlReadBufferPositive()");
     if (sceCtrlReadBufferNegative_used)
-        osdDrawStringF(20, y += 22, "sceCtrlReadBufferNegative()");
+        osdDrawStringF(x, y += 22, "sceCtrlReadBufferNegative()");
     if (sceMotionGetState_used)
-        osdDrawStringF(20, y += 22, "sceMotionGetState()");
+        osdDrawStringF(x, y += 22, "sceMotionGetState()");
     if (sceMotionGetSensorState_used)
-        osdDrawStringF(20, y += 22, "sceMotionGetSensorState()");
+        osdDrawStringF(x, y += 22, "sceMotionGetSensorState()");
     if (sceMotionGetBasicOrientation_used)
-        osdDrawStringF(20, y += 22, "sceMotionGetBasicOrientation()");
+        osdDrawStringF(x, y += 22, "sceMotionGetBasicOrientation()");
     if (sceTouchPeek_front)
-        osdDrawStringF(20, y += 22, "sceTouchPeek( FRONT )");
+        osdDrawStringF(x, y += 22, "sceTouchPeek( FRONT )");
     if (sceTouchPeek_back)
-        osdDrawStringF(20, y += 22, "sceTouchPeek( BACK )");
+        osdDrawStringF(x, y += 22, "sceTouchPeek( BACK )");
     if (sceTouchRead_front)
-        osdDrawStringF(20, y += 22, "sceTouchRead( FRONT )");
+        osdDrawStringF(x, y += 22, "sceTouchRead( FRONT )");
     if (sceTouchRead_back)
-        osdDrawStringF(20, y += 22, "sceTouchRead( BACK )");
+        osdDrawStringF(x, y += 22, "sceTouchRead( BACK )");
 }
 
 void setupMiscMenu() {

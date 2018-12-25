@@ -93,28 +93,28 @@ void drawMemoryMenu(const SceDisplayFrameBuf *pParam) {
 
     char buf[32];
     formatReadableSize(info.size_user, buf, 32);
-    osdDrawStringF(0, 60,  "Free RAM:     %s", buf);
+    osdDrawStringF(10, 60,  "Free RAM:     %s", buf);
     formatReadableSize(info.size_cdram, buf, 32);
-    osdDrawStringF(0, 82,  "Free VRAM:    %s", buf);
+    osdDrawStringF(10, 82,  "Free VRAM:    %s", buf);
     formatReadableSize(info.size_phycont, buf, 32);
-    osdDrawStringF(0, 104, "Free phycont: %s", buf);
+    osdDrawStringF(10, 104, "Free phycont: %s", buf);
 
     // Header
-    osdDrawStringF(pParam->width - 388, 104, "Allocated MemBlocks (%d):", g_memBlocksCount);
+    osdDrawStringF(pParam->width - 398, 104, "Allocated MemBlocks (%d):", g_memBlocksCount);
     if (g_memBlocksCount > MAX_MEM_BLOCKS) {
         char buf[32];
         snprintf(buf, 32, "!! > %d", MAX_MEM_BLOCKS);
         osdDrawStringF(pParam->width - osdGetTextWidth(buf), 104, buf);
     }
-    osdDrawStringF(20, 148, "  type         UID          base      size");
+    osdDrawStringF(30, 148, "  type         UID          base      size");
 
     // Scrollable section
-    int x = 20, y = 165;
+    int x = 30, y = 165;
 
     if (g_menuScroll > 0) {
         // Draw scroll indicator
-        osdDrawStringF(pParam->width - 24, y + 22, "/\\");
-        osdDrawStringF(pParam->width - 24, y + 44, "%2d", g_menuScroll);
+        osdDrawStringF(pParam->width - 24 - 5, y + 22, "/\\");
+        osdDrawStringF(pParam->width - 24 - 5, y + 44, "%2d", g_menuScroll);
     }
 
     for (int i = g_menuScroll; i < MAX_MEM_BLOCKS; i++) {
@@ -133,8 +133,8 @@ void drawMemoryMenu(const SceDisplayFrameBuf *pParam) {
         // Do not draw out of screen
         if (y > pParam->height - 94) {
             // Draw scroll indicator
-            osdDrawStringF(pParam->width - 24, pParam->height - 72, "%2d", MIN(g_memBlocksCount, MAX_MEM_BLOCKS) - i);
-            osdDrawStringF(pParam->width - 24, pParam->height - 50, "\\/");
+            osdDrawStringF(pParam->width - 24 - 5, pParam->height - 72, "%2d", MIN(g_memBlocksCount, MAX_MEM_BLOCKS) - i);
+            osdDrawStringF(pParam->width - 24 - 5, pParam->height - 50, "\\/");
             break;
         }
     }

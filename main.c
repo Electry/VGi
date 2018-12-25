@@ -64,10 +64,10 @@ static void drawNextSectionIndicator(const SceDisplayFrameBuf *pParam, const cha
     char buf[64];
 
     snprintf(buf, 64, "%s%s", strlen(L) > 0 ? "< " : "", L);
-    osdDrawStringF(0, pParam->height - 22, "%s", buf);
+    osdDrawStringF(5, pParam->height - 22 - 5, "%s", buf);
 
     snprintf(buf, 64, "%s%s", R, strlen(R) > 0 ? " >" : "");
-    osdDrawStringF(pParam->width - osdGetTextWidth(buf), pParam->height - 22, "%s", buf);
+    osdDrawStringF(pParam->width - osdGetTextWidth(buf) - 5, pParam->height - 22 - 5, "%s", buf);
 }
 
 static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int sync) {
@@ -88,9 +88,9 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
     osdSetBgColor(0, 0, 0, 0);
     osdSetTextColor(10, 20, 50, 255);
     osdSetTextScale(pParam->width == 640 ? 3 : 5);
-    osdDrawStringF(0, pParam->height - 110, "VGi %s", VGi_VERSION);
+    osdDrawStringF(0, pParam->height - 115, "VGi %s", VGi_VERSION);
     osdSetTextScale(2);
-    osdDrawStringF(pParam->width - osdGetTextWidth("by Electry"), pParam->height - 66, "by Electry");
+    osdDrawStringF(pParam->width - osdGetTextWidth("by Electry"), pParam->height - 71, "by Electry");
 
     // Section content
     osdSetTextColor(255, 255, 255, 255);

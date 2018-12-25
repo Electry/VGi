@@ -17,27 +17,27 @@ void drawDeviceMenu(const SceDisplayFrameBuf *pParam) {
     osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_DEVICE) / 2, 5, MENU_TITLE_DEVICE);
 
     osdSetTextScale(1);
-    int y = 60;
+    int x = 10, y = 60;
 
-    osdDrawStringF(20, y += 22, "Using Wireless Features: %s", scePowerGetUsingWireless() == SCE_TRUE ? "YES" : "NO");
-    osdDrawStringF(20, y += 22, "PowerConfiguration: %s",
+    osdDrawStringF(x, y += 22, "Using Wireless Features: %s", scePowerGetUsingWireless() == SCE_TRUE ? "YES" : "NO");
+    osdDrawStringF(x, y += 22, "PowerConfiguration: %s",
             scePowerSetConfigurationMode_mode == 0 ? "Unknown" :
             (scePowerSetConfigurationMode_mode == SCE_POWER_CONFIGURATION_MODE_A ? "MODE_A" :
             (scePowerSetConfigurationMode_mode == SCE_POWER_CONFIGURATION_MODE_B ? "MODE_B" :
             (scePowerSetConfigurationMode_mode == SCE_POWER_CONFIGURATION_MODE_C ? "MODE_C" : "???"))));
     if (scePowerSetConfigurationMode_mode != 0) {
-        osdDrawStringF(40, y += 22, "GPU clock: %s", scePowerSetConfigurationMode_mode == SCE_POWER_CONFIGURATION_MODE_A ? "normal" : "high");
-        osdDrawStringF(40, y += 22, "WLAN enabled: %s", scePowerSetConfigurationMode_mode == SCE_POWER_CONFIGURATION_MODE_B ? "NO" : "YES");
-        osdDrawStringF(40, y += 22, "Camera disabled: %s, Max Brightness limited: %s",
+        osdDrawStringF(x + 20, y += 22, "GPU clock: %s", scePowerSetConfigurationMode_mode == SCE_POWER_CONFIGURATION_MODE_A ? "normal" : "high");
+        osdDrawStringF(x + 20, y += 22, "WLAN enabled: %s", scePowerSetConfigurationMode_mode == SCE_POWER_CONFIGURATION_MODE_B ? "NO" : "YES");
+        osdDrawStringF(x + 20, y += 22, "Camera disabled: %s, Max Brightness limited: %s",
                 scePowerSetConfigurationMode_mode == SCE_POWER_CONFIGURATION_MODE_C ? "YES" : "NO",
                 scePowerSetConfigurationMode_mode == SCE_POWER_CONFIGURATION_MODE_C ? "YES" : "NO");
     }
 
-    osdDrawStringF(20, y += 44, "Current Clocks:");
-    osdDrawStringF(40, y += 22, "CPU: %d MHz", scePowerGetArmClockFrequency());
-    osdDrawStringF(40, y += 22, "GPU: %d MHz", scePowerGetGpuClockFrequency());
-    osdDrawStringF(40, y += 22, "BUS: %d MHz", scePowerGetBusClockFrequency());
-    osdDrawStringF(40, y += 22, "XBAR: %d MHz", scePowerGetGpuXbarClockFrequency());
+    osdDrawStringF(x, y += 44, "Current Clocks:");
+    osdDrawStringF(x + 20, y += 22, "CPU: %d MHz", scePowerGetArmClockFrequency());
+    osdDrawStringF(x + 20, y += 22, "GPU: %d MHz", scePowerGetGpuClockFrequency());
+    osdDrawStringF(x + 20, y += 22, "BUS: %d MHz", scePowerGetBusClockFrequency());
+    osdDrawStringF(x + 20, y += 22, "XBAR: %d MHz", scePowerGetGpuXbarClockFrequency());
 }
 
 void setupDeviceMenu() {

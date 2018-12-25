@@ -18,13 +18,14 @@ void drawAppInfoMenu(const SceDisplayFrameBuf *pParam) {
     osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_APP_INFO) / 2, 5, MENU_TITLE_APP_INFO);
 
     osdSetTextScale(1);
-    osdDrawStringF(0, 60,  "Title:       %s", g_appTitle);
-    osdDrawStringF(0, 82,  "STitle:      %s", g_appSTitle);
-    osdDrawStringF(0, 104, "ContentID:   %s", g_appContent);
-    osdDrawStringF(0, 126, "TitleID:     %s [ %s ]", g_appTitleID, g_appRegion);
-    osdDrawStringF(0, 148, "Module:      %s", g_appModuleInfo.name);
-    osdDrawStringF(0, 170, "Module path: %s", g_appSceModuleInfo.path);
-    osdDrawStringF(0, 192, "Module NID:  0x%08X", g_appModuleInfo.module_nid);
+    int x = 10, y = 38;
+    osdDrawStringF(x, y += 22,  "Title:       %s", g_appTitle);
+    osdDrawStringF(x, y += 20,  "STitle:      %s", g_appSTitle);
+    osdDrawStringF(x, y += 20, "ContentID:   %s", g_appContent);
+    osdDrawStringF(x, y += 20, "TitleID:     %s [ %s ]", g_appTitleID, g_appRegion);
+    osdDrawStringF(x, y += 20, "Module:      %s", g_appModuleInfo.name);
+    osdDrawStringF(x, y += 20, "Module path: %s", g_appSceModuleInfo.path);
+    osdDrawStringF(x, y += 20, "Module NID:  0x%08X", g_appModuleInfo.module_nid);
 }
 
 void setupAppInfoMenu() {
