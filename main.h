@@ -21,7 +21,7 @@ typedef enum {
 } VGi_MenuSection;
 
 extern uint8_t g_menuScroll;
-
+extern uint8_t g_menuVisible;
 extern uint8_t g_vsyncKillswitch;
 
 extern SceUID g_hooks[];

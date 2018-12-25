@@ -11,7 +11,7 @@ SceUID g_hooks[HOOKS_NUM] = {0};
 tai_hook_ref_t g_hookrefs[HOOKS_NUM] = {0};
 
 uint8_t g_menuScroll = 0;
-static uint8_t g_menuVisible = 0;
+uint8_t g_menuVisible = 0;
 static VGi_MenuSection g_menuSection = MENU_APP_INFO;
 static unsigned int g_buttonsPressed = 0;
 
