@@ -12,6 +12,7 @@ tai_hook_ref_t g_hookrefs[HOOKS_NUM] = {0};
 
 uint8_t g_menuScroll = 0;
 uint8_t g_menuVisible = 0;
+uint8_t g_vsyncKillswitch = 0;
 static VGi_MenuSection g_menuSection = MENU_APP_INFO;
 static unsigned int g_buttonsPressed = 0;
 
@@ -24,12 +25,6 @@ static void checkButtons() {
         // Toggle menu
         if (buttons & SCE_CTRL_LTRIGGER) {
             g_menuVisible = !g_menuVisible;
-        }
-
-        // Vsync Killswitch
-        if (g_menuVisible && g_menuSection == MENU_GRAPHICS) {
-            if (buttons & SCE_CTRL_CIRCLE)
-                g_vsyncKillswitch = !g_vsyncKillswitch;
         }
     } else if (g_menuVisible) {
         // Move between sections
@@ -49,6 +44,16 @@ static void checkButtons() {
         } else if (buttons & SCE_CTRL_DOWN) {
             if (g_menuScroll < 255)
                 g_menuScroll++;
+        }
+    }
+
+    // Vsync Killswitch
+    if (g_menuVisible && g_menuSection == MENU_GRAPHICS) {
+        if (buttons & SCE_CTRL_CIRCLE) {
+            if (g_vsyncKillswitch < 2)
+                g_vsyncKillswitch++;
+            else
+                g_vsyncKillswitch = 0;
         }
     }
 

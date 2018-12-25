@@ -50,8 +50,6 @@ static uint32_t g_colorSurfacesCount = 0;
 
 static SceGxmInitializeParams g_gxmInitializeParams = {0};
 
-uint8_t g_vsyncKillswitch = 0;
-
 static int sceGxmCreateRenderTarget_patched(const SceGxmRenderTargetParams *params, SceGxmRenderTarget *renderTarget) {
     SceUID dmb = params->driverMemBlock;
     int ret = TAI_CONTINUE(int, g_hookrefs[11], params, renderTarget);
@@ -94,54 +92,62 @@ static int sceDisplayGetVcount_patched() {
 }
 static int sceDisplayWaitVblankStart_patched() {
     sceDisplayWaitVblankStart_used = 1;
-    if (g_vsyncKillswitch)
+    if (g_vsyncKillswitch == 2)
         return 0;
     return TAI_CONTINUE(int, g_hookrefs[3]);
 }
 static int sceDisplayWaitVblankStartCB_patched() {
     sceDisplayWaitVblankStartCB_used = 1;
-    if (g_vsyncKillswitch)
+    if (g_vsyncKillswitch == 2)
         return 0;
     return TAI_CONTINUE(int, g_hookrefs[4]);
 }
 static int sceDisplayWaitVblankStartMulti_patched(unsigned int vcount) {
     sceDisplayWaitVblankStartMulti_used = 1;
     sceDisplayWaitVblankStartMulti_vcount = vcount;
-    if (g_vsyncKillswitch)
+    if (g_vsyncKillswitch == 2)
         return 0;
+    if (g_vsyncKillswitch == 1)
+        vcount = 1;
     return TAI_CONTINUE(int, g_hookrefs[5], vcount);
 }
 static int sceDisplayWaitVblankStartMultiCB_patched(unsigned int vcount) {
     sceDisplayWaitVblankStartMultiCB_used = 1;
     sceDisplayWaitVblankStartMultiCB_vcount = vcount;
-    if (g_vsyncKillswitch)
+    if (g_vsyncKillswitch == 2)
         return 0;
+    if (g_vsyncKillswitch == 1)
+        vcount = 1;
     return TAI_CONTINUE(int, g_hookrefs[6], vcount);
 }
 static int sceDisplayWaitSetFrameBuf_patched() {
     sceDisplayWaitSetFrameBuf_used = 1;
-    if (g_vsyncKillswitch)
+    if (g_vsyncKillswitch == 2)
         return 0;
     return TAI_CONTINUE(int, g_hookrefs[7]);
 }
 static int sceDisplayWaitSetFrameBufCB_patched() {
     sceDisplayWaitSetFrameBufCB_used = 1;
-    if (g_vsyncKillswitch)
+    if (g_vsyncKillswitch == 2)
         return 0;
     return TAI_CONTINUE(int, g_hookrefs[8]);
 }
 static int sceDisplayWaitSetFrameBufMulti_patched(unsigned int vcount) {
     sceDisplayWaitSetFrameBufMulti_used = 1;
     sceDisplayWaitSetFrameBufMulti_vcount = vcount;
-    if (g_vsyncKillswitch)
+    if (g_vsyncKillswitch == 2)
         return 0;
+    if (g_vsyncKillswitch == 1)
+        vcount = 1;
     return TAI_CONTINUE(int, g_hookrefs[9], vcount);
 }
 static int sceDisplayWaitSetFrameBufMultiCB_patched(unsigned int vcount) {
     sceDisplayWaitSetFrameBufMultiCB_used = 1;
     sceDisplayWaitSetFrameBufMultiCB_vcount = vcount;
-    if (g_vsyncKillswitch)
+    if (g_vsyncKillswitch == 2)
         return 0;
+    if (g_vsyncKillswitch == 1)
+        vcount = 1;
     return TAI_CONTINUE(int, g_hookrefs[10], vcount);
 }
 
@@ -196,10 +202,13 @@ void drawGraphicsMenu(const SceDisplayFrameBuf *pParam) {
     drawStringF(0, 170, "VSync mechanisms:");
     if (!g_vsyncKillswitch) {
         setTextColor(150, 255, 150, 255);
-        drawStringF(pParam->width - getTextWidth("ENABLED (SEL + O)") - 10, 170, "ENABLED (SEL + O)");
-    } else {
+        drawStringF(pParam->width - getTextWidth("DEFAULT (O)") - 10, 170, "DEFAULT (O)");
+    } else if (g_vsyncKillswitch == 1) {
+        setTextColor(255, 255, 150, 255);
+        drawStringF(pParam->width - getTextWidth("ALLOW 1 (O)") - 10, 170, "ALLOW 1 (O)");
+    } else if (g_vsyncKillswitch == 2) {
         setTextColor(255, 150, 150, 255);
-        drawStringF(pParam->width - getTextWidth("DROPPED (SEL + O)") - 10, 170, "DROPPED (SEL + O)");
+        drawStringF(pParam->width - getTextWidth("DROP ALL (O)") - 10, 170, "DROP ALL (O)");
     }
     setTextColor(255, 255, 255, 255);
 
