@@ -10,16 +10,19 @@
 SceUID g_hooks[HOOKS_NUM] = {0};
 tai_hook_ref_t g_hookrefs[HOOKS_NUM] = {0};
 
+#define BUTTONS_FAST_MOVE_DELAY 500000
 uint8_t g_menuScroll = 0;
 uint8_t g_menuVisible = 0;
 uint8_t g_vsyncKillswitch = 0;
 static VGi_MenuSection g_menuSection = MENU_APP_INFO;
 static unsigned int g_buttonsPressed = 0;
+static SceUInt32 g_buttonsLastChange = 0;
 
 static void checkButtons() {
     SceCtrlData ctrl;
     sceCtrlPeekBufferPositive(0, &ctrl, 1);
     unsigned int buttons = ctrl.buttons & ~g_buttonsPressed;
+    SceUInt32 time_now = sceKernelGetProcessTimeLow();
 
     if (ctrl.buttons & SCE_CTRL_SELECT) {
         // Toggle menu
@@ -41,7 +44,21 @@ static void checkButtons() {
         } else if (buttons & SCE_CTRL_UP) {
             if (g_menuScroll > 0)
                 g_menuScroll--;
+            g_buttonsLastChange = time_now;
         } else if (buttons & SCE_CTRL_DOWN) {
+            if (g_menuScroll < 255)
+                g_menuScroll++;
+            g_buttonsLastChange = time_now;
+        }
+        // Fast scroll UP
+        else if (ctrl.buttons & SCE_CTRL_UP &&
+                time_now - g_buttonsLastChange > BUTTONS_FAST_MOVE_DELAY) {
+            if (g_menuScroll > 0)
+                g_menuScroll--;
+        }
+        // Fast scroll DOWN
+        else if (ctrl.buttons & SCE_CTRL_DOWN &&
+                time_now - g_buttonsLastChange > BUTTONS_FAST_MOVE_DELAY) {
             if (g_menuScroll < 255)
                 g_menuScroll++;
         }

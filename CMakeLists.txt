@@ -35,6 +35,7 @@ target_link_libraries(${PROJECT_NAME}
   SceSysmem_stub
   SceLibc_stub
   ScePower_stub
+  SceLibKernel_stub
 )
 
 set_target_properties(${PROJECT_NAME}
