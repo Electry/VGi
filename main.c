@@ -6,7 +6,7 @@
 
 #define VGi_VERSION  "v0.5"
 
-#define HOOKS_NUM 28
+#define HOOKS_NUM 33
 SceUID g_hooks[HOOKS_NUM] = {0};
 tai_hook_ref_t g_hookrefs[HOOKS_NUM] = {0};
 
@@ -114,11 +114,15 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
             break;
         case MENU_GRAPHICS_4:
             drawGraphics4Menu(pParam);
-            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_3, MENU_TITLE_MEMORY);
+            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_3, MENU_TITLE_GRAPHICS_5);
+            break;
+        case MENU_GRAPHICS_5:
+            drawGraphics5Menu(pParam);
+            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_4, MENU_TITLE_MEMORY);
             break;
         case MENU_MEMORY:
             drawMemoryMenu(pParam);
-            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_3, MENU_TITLE_MISC);
+            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_5, MENU_TITLE_MISC);
             break;
         case MENU_MISC:
             drawMiscMenu(pParam);

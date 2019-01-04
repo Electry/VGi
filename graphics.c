@@ -7,6 +7,7 @@
 #define MAX_RENDER_TARGETS          64
 #define MAX_COLOR_SURFACES          64
 #define MAX_DEPTH_STENCIL_SURFACES  64
+#define MAX_TEXTURES                64
 
 typedef struct {
     uint8_t active;
@@ -36,6 +37,25 @@ typedef struct {
     void *stencilData;
 } VGi_DepthStencilSurface;
 
+typedef enum {
+    TEXTURE_LINEAR,
+    TEXTURE_LINEAR_STRIDED,
+    TEXTURE_SWIZZLED,
+    TEXTURE_TILED,
+    TEXTURE_CUBE
+} VGi_TextureType;
+
+typedef struct {
+    SceGxmTexture *texture;
+    VGi_TextureType type;
+    const void *data;
+    SceGxmTextureFormat texFormat;
+    unsigned int width;
+    unsigned int height;
+    unsigned int mipCount;
+    unsigned int byteStride;
+} VGi_Texture;
+
 static uint8_t sceDisplayGetRefreshRate_used = 0;
 static uint8_t sceDisplayGetVcount_used = 0;
 static uint8_t sceDisplayWaitVblankStart_used = 0;
@@ -60,6 +80,9 @@ static uint32_t g_colorSurfacesCount = 0;
 
 static VGi_DepthStencilSurface g_depthStencilSurfaces[MAX_DEPTH_STENCIL_SURFACES] = {0};
 static uint32_t g_depthStencilSurfacesCount = 0;
+
+static VGi_Texture g_textures[MAX_TEXTURES] = {0};
+static uint32_t g_texturesCount = 0;
 
 static SceGxmInitializeParams g_gxmInitializeParams = {0};
 
@@ -247,6 +270,118 @@ RET_EXISTING:
     return ret;
 }
 
+static void addTexture(
+        VGi_TextureType type,
+        SceGxmTexture *texture,
+        const void *data,
+        SceGxmTextureFormat texFormat,
+        unsigned int width,
+        unsigned int height,
+        unsigned int mipCount,
+        unsigned int byteStride) {
+    int i = 0;
+    for (i = 0; i < MAX_TEXTURES; i++) {
+        if (g_textures[i].texture == texture) {
+            goto RET_EXISTING;
+        }
+    }
+    for (i = 0; i < MAX_TEXTURES; i++) {
+        if (!g_textures[i].texture) {
+            goto RET_NEW;
+        }
+    }
+
+RET_NEW:
+    g_texturesCount++;
+RET_EXISTING:
+    g_textures[i].texture = texture;
+    g_textures[i].type = type;
+    g_textures[i].data = data;
+    g_textures[i].texFormat = texFormat;
+    g_textures[i].width = width;
+    g_textures[i].height = height;
+    g_textures[i].mipCount = mipCount;
+    g_textures[i].byteStride = byteStride;
+}
+
+static int sceGxmTextureInitSwizzled_patched(
+        SceGxmTexture *texture,
+        const void *data,
+        SceGxmTextureFormat texFormat,
+        unsigned int width,
+        unsigned int height,
+        unsigned int mipCount) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[28], texture, data, texFormat,
+            width, height, mipCount);
+    addTexture(TEXTURE_SWIZZLED, texture, data, texFormat, width, height, mipCount, 0);
+    return ret;
+}
+static int sceGxmTextureInitLinear_patched(
+        SceGxmTexture *texture,
+        const void *data,
+        SceGxmTextureFormat texFormat,
+        unsigned int width,
+        unsigned int height,
+        unsigned int mipCount) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[29], texture, data, texFormat,
+            width, height, mipCount);
+    addTexture(TEXTURE_LINEAR, texture, data, texFormat, width, height, mipCount, 0);
+    return ret;
+}
+static int sceGxmTextureInitLinearStrided_patched(
+        SceGxmTexture *texture,
+        const void *data,
+        SceGxmTextureFormat texFormat,
+        unsigned int width,
+        unsigned int height,
+        unsigned int byteStride) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[30], texture, data, texFormat,
+            width, height, byteStride);
+    addTexture(TEXTURE_LINEAR_STRIDED, texture, data, texFormat, width, height, 0, byteStride);
+    return ret;
+}
+static int sceGxmTextureInitTiled_patched(
+        SceGxmTexture *texture,
+        const void *data,
+        SceGxmTextureFormat texFormat,
+        unsigned int width,
+        unsigned int height,
+        unsigned int mipCount) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[31], texture, data, texFormat,
+            width, height, mipCount);
+    addTexture(TEXTURE_TILED, texture, data, texFormat, width, height, mipCount, 0);
+    return ret;
+}
+static int sceGxmTextureInitCube_patched(
+        SceGxmTexture *texture,
+        const void *data,
+        SceGxmTextureFormat texFormat,
+        unsigned int width,
+        unsigned int height,
+        unsigned int mipCount) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[32], texture, data, texFormat,
+            width, height, mipCount);
+    addTexture(TEXTURE_CUBE, texture, data, texFormat, width, height, mipCount, 0);
+    return ret;
+}
+
+static const char *getTextureTypeString(VGi_TextureType type) {
+    switch (type) {
+        case TEXTURE_LINEAR:
+            return "LINEAR";
+        case TEXTURE_LINEAR_STRIDED:
+            return "LINEAR_S";
+        case TEXTURE_SWIZZLED:
+            return "SWIZZLED";
+        case TEXTURE_TILED:
+            return "TILED";
+        case TEXTURE_CUBE:
+            return "CUBE";
+        default:
+            return "?";
+    }
+}
+
 void drawGraphicsMenu(const SceDisplayFrameBuf *pParam) {
     osdSetTextScale(2);
     osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_GRAPHICS) / 2, 5, MENU_TITLE_GRAPHICS);
@@ -388,7 +523,7 @@ void drawGraphics4Menu(const SceDisplayFrameBuf *pParam) {
 
     // Header
     osdSetTextScale(1);
-    osdDrawStringF(10, 60, "Depth-Stencil Surfaces (%d):", g_depthStencilSurfacesCount);
+    osdDrawStringF(10, 60, "Depth/Stencil Surfaces (%d):", g_depthStencilSurfacesCount);
     if (g_depthStencilSurfacesCount > MAX_DEPTH_STENCIL_SURFACES) {
         char buf[32];
         snprintf(buf, 32, "!! > %d", MAX_DEPTH_STENCIL_SURFACES);
@@ -420,6 +555,52 @@ void drawGraphics4Menu(const SceDisplayFrameBuf *pParam) {
         if (y > pParam->height - 72) {
             // Draw scroll indicator
             osdDrawStringF(pParam->width - 24 - 5, pParam->height - 72, "%2d", MIN(g_depthStencilSurfacesCount, MAX_DEPTH_STENCIL_SURFACES) - i);
+            osdDrawStringF(pParam->width - 24 - 5, pParam->height - 50, "\\/");
+            break;
+        }
+    }
+}
+
+void drawGraphics5Menu(const SceDisplayFrameBuf *pParam) {
+    osdSetTextScale(2);
+    osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_GRAPHICS_5) / 2, 5, MENU_TITLE_GRAPHICS_5);
+
+    // Header
+    osdSetTextScale(1);
+    osdDrawStringF(10, 60, "Textures (%d):", g_texturesCount);
+    if (g_texturesCount > MAX_TEXTURES) {
+        char buf[32];
+        snprintf(buf, 32, "!! > %d", MAX_TEXTURES);
+        osdDrawStringF(pParam->width - osdGetTextWidth(buf), 60, buf);
+    }
+    osdDrawStringF(30, 93, "  size      type       ptr         data        format  mipCount byteStride");
+
+    // Scrollable section
+    int x = 30, y = 104;
+
+    if (g_menuScroll > 0) {
+        // Draw scroll indicator
+        osdDrawStringF(pParam->width - 24 - 5, y + 22, "/\\");
+        osdDrawStringF(pParam->width - 24 - 5, y + 44, "%2d", g_menuScroll);
+    }
+
+    for (int i = g_menuScroll; i < MAX_TEXTURES; i++) {
+        if (g_textures[i].texture) {
+            osdDrawStringF(x, y += 22, "%4dx%-5d %-9s 0x%-9X 0x%-9X 0x%-9X %-6d %d",
+                    g_textures[i].width,
+                    g_textures[i].height,
+                    getTextureTypeString(g_textures[i].type),
+                    g_textures[i].texture,
+                    g_textures[i].data,
+                    g_textures[i].texFormat,
+                    g_textures[i].mipCount,
+                    g_textures[i].byteStride);
+        }
+
+        // Do not draw out of screen
+        if (y > pParam->height - 72) {
+            // Draw scroll indicator
+            osdDrawStringF(pParam->width - 24 - 5, pParam->height - 72, "%2d", MIN(g_texturesCount, MAX_TEXTURES) - i);
             osdDrawStringF(pParam->width - 24 - 5, pParam->height - 50, "\\/");
             break;
         }
@@ -531,4 +712,35 @@ void setupGraphicsMenu() {
                     TAI_ANY_LIBRARY,
                     0xCA9D41D1,
                     sceGxmDepthStencilSurfaceInit_patched);
+
+    g_hooks[28] = taiHookFunctionImport(
+                    &g_hookrefs[28],
+                    TAI_MAIN_MODULE,
+                    TAI_ANY_LIBRARY,
+                    0xD572D547,
+                    sceGxmTextureInitSwizzled_patched);
+    g_hooks[29] = taiHookFunctionImport(
+                    &g_hookrefs[29],
+                    TAI_MAIN_MODULE,
+                    TAI_ANY_LIBRARY,
+                    0x4811AECB,
+                    sceGxmTextureInitLinear_patched);
+    g_hooks[30] = taiHookFunctionImport(
+                    &g_hookrefs[30],
+                    TAI_MAIN_MODULE,
+                    TAI_ANY_LIBRARY,
+                    0x6679BEF0,
+                    sceGxmTextureInitLinearStrided_patched);
+    g_hooks[31] = taiHookFunctionImport(
+                    &g_hookrefs[31],
+                    TAI_MAIN_MODULE,
+                    TAI_ANY_LIBRARY,
+                    0xE6F0DB27,
+                    sceGxmTextureInitTiled_patched);
+    g_hooks[32] = taiHookFunctionImport(
+                    &g_hookrefs[32],
+                    TAI_MAIN_MODULE,
+                    TAI_ANY_LIBRARY,
+                    0x11DC8DC9,
+                    sceGxmTextureInitCube_patched);
 }

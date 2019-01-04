@@ -5,7 +5,8 @@
 #define MENU_TITLE_GRAPHICS   "Graphics"
 #define MENU_TITLE_GRAPHICS_2 "Render Targets"
 #define MENU_TITLE_GRAPHICS_3 "Color Surfaces"
-#define MENU_TITLE_GRAPHICS_4 "Depth-Stencil Surfaces"
+#define MENU_TITLE_GRAPHICS_4 "Depth/Stencil Surfaces"
+#define MENU_TITLE_GRAPHICS_5 "Textures"
 #define MENU_TITLE_MEMORY     "Memory"
 #define MENU_TITLE_MISC       "Misc"
 #define MENU_TITLE_DEVICE     "Device"
@@ -16,6 +17,7 @@ typedef enum {
     MENU_GRAPHICS_2,
     MENU_GRAPHICS_3,
     MENU_GRAPHICS_4,
+    MENU_GRAPHICS_5,
     MENU_MEMORY,
     MENU_MISC,
     MENU_DEVICE,
@@ -37,6 +39,7 @@ void drawGraphicsMenu(const SceDisplayFrameBuf *pParam);
 void drawGraphics2Menu(const SceDisplayFrameBuf *pParam);
 void drawGraphics3Menu(const SceDisplayFrameBuf *pParam);
 void drawGraphics4Menu(const SceDisplayFrameBuf *pParam);
+void drawGraphics5Menu(const SceDisplayFrameBuf *pParam);
 
 void setupMemoryMenu();
 void drawMemoryMenu(const SceDisplayFrameBuf *pParam);
