@@ -6,6 +6,7 @@
 
 #define MAX_RENDER_TARGETS          64
 #define MAX_COLOR_SURFACES          64
+#define MAX_DEPTH_STENCIL_SURFACES  64
 
 typedef struct {
     uint8_t active;
@@ -25,6 +26,15 @@ typedef struct {
     unsigned int strideInPixels;
     void *data;
 } VGi_ColorSurface;
+
+typedef struct {
+    SceGxmDepthStencilSurface *surface;
+    SceGxmDepthStencilFormat depthStencilFormat;
+    SceGxmDepthStencilSurfaceType surfaceType;
+    unsigned int strideInSamples;
+    void *depthData;
+    void *stencilData;
+} VGi_DepthStencilSurface;
 
 static uint8_t sceDisplayGetRefreshRate_used = 0;
 static uint8_t sceDisplayGetVcount_used = 0;
@@ -47,6 +57,9 @@ static uint32_t g_renderTargetsCount = 0;
 
 static VGi_ColorSurface g_colorSurfaces[MAX_COLOR_SURFACES] = {0};
 static uint32_t g_colorSurfacesCount = 0;
+
+static VGi_DepthStencilSurface g_depthStencilSurfaces[MAX_DEPTH_STENCIL_SURFACES] = {0};
+static uint32_t g_depthStencilSurfacesCount = 0;
 
 static SceGxmInitializeParams g_gxmInitializeParams = {0};
 
@@ -198,6 +211,42 @@ static int sceGxmInitialize_patched(const SceGxmInitializeParams *params) {
     return TAI_CONTINUE(int, g_hookrefs[25], params);
 }
 
+static int sceGxmDepthStencilSurfaceInit_patched(
+        SceGxmDepthStencilSurface *surface,
+        SceGxmDepthStencilFormat depthStencilFormat,
+        SceGxmDepthStencilSurfaceType surfaceType,
+        unsigned int strideInSamples,
+        void *depthData,
+        void *stencilData) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[27], surface, depthStencilFormat, surfaceType,
+            strideInSamples, depthData, stencilData);
+
+    int i = 0;
+    for (i = 0; i < MAX_DEPTH_STENCIL_SURFACES; i++) {
+        if (g_depthStencilSurfaces[i].surface == surface) {
+            goto RET_EXISTING;
+        }
+    }
+    for (i = 0; i < MAX_DEPTH_STENCIL_SURFACES; i++) {
+        if (!g_depthStencilSurfaces[i].surface) {
+            goto RET_NEW;
+        }
+    }
+
+    return ret;
+
+RET_NEW:
+    g_depthStencilSurfacesCount++;
+RET_EXISTING:
+    g_depthStencilSurfaces[i].surface = surface;
+    g_depthStencilSurfaces[i].depthStencilFormat = depthStencilFormat;
+    g_depthStencilSurfaces[i].surfaceType = surfaceType;
+    g_depthStencilSurfaces[i].strideInSamples = strideInSamples;
+    g_depthStencilSurfaces[i].depthData = depthData;
+    g_depthStencilSurfaces[i].stencilData = stencilData;
+    return ret;
+}
+
 void drawGraphicsMenu(const SceDisplayFrameBuf *pParam) {
     osdSetTextScale(2);
     osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_GRAPHICS) / 2, 5, MENU_TITLE_GRAPHICS);
@@ -333,6 +382,50 @@ void drawGraphics3Menu(const SceDisplayFrameBuf *pParam) {
     }
 }
 
+void drawGraphics4Menu(const SceDisplayFrameBuf *pParam) {
+    osdSetTextScale(2);
+    osdDrawStringF((pParam->width / 2) - osdGetTextWidth(MENU_TITLE_GRAPHICS_4) / 2, 5, MENU_TITLE_GRAPHICS_4);
+
+    // Header
+    osdSetTextScale(1);
+    osdDrawStringF(10, 60, "Depth-Stencil Surfaces (%d):", g_depthStencilSurfacesCount);
+    if (g_depthStencilSurfacesCount > MAX_DEPTH_STENCIL_SURFACES) {
+        char buf[32];
+        snprintf(buf, 32, "!! > %d", MAX_DEPTH_STENCIL_SURFACES);
+        osdDrawStringF(pParam->width - osdGetTextWidth(buf), 60, buf);
+    }
+    osdDrawStringF(30, 93, "strideSamples  surface     depth       stencil     format      type");
+
+    // Scrollable section
+    int x = 30, y = 104;
+
+    if (g_menuScroll > 0) {
+        // Draw scroll indicator
+        osdDrawStringF(pParam->width - 24 - 5, y + 22, "/\\");
+        osdDrawStringF(pParam->width - 24 - 5, y + 44, "%2d", g_menuScroll);
+    }
+
+    for (int i = g_menuScroll; i < MAX_DEPTH_STENCIL_SURFACES; i++) {
+        if (g_depthStencilSurfaces[i].surface) {
+            osdDrawStringF(x, y += 22, "    %-9d 0x%-9X 0x%-9X 0x%-9X 0x%-9X 0x%-9X",
+                    g_depthStencilSurfaces[i].strideInSamples,
+                    g_depthStencilSurfaces[i].surface,
+                    g_depthStencilSurfaces[i].depthData,
+                    g_depthStencilSurfaces[i].stencilData,
+                    g_depthStencilSurfaces[i].depthStencilFormat,
+                    g_depthStencilSurfaces[i].surfaceType);
+        }
+
+        // Do not draw out of screen
+        if (y > pParam->height - 72) {
+            // Draw scroll indicator
+            osdDrawStringF(pParam->width - 24 - 5, pParam->height - 72, "%2d", MIN(g_depthStencilSurfacesCount, MAX_DEPTH_STENCIL_SURFACES) - i);
+            osdDrawStringF(pParam->width - 24 - 5, pParam->height - 50, "\\/");
+            break;
+        }
+    }
+}
+
 void setupGraphicsMenu() {
 
     g_hooks[1] = taiHookFunctionImport(
@@ -431,4 +524,11 @@ void setupGraphicsMenu() {
                     TAI_ANY_LIBRARY,
                     0xB0F1E4EC,
                     sceGxmInitialize_patched);
+
+    g_hooks[27] = taiHookFunctionImport(
+                    &g_hookrefs[27],
+                    TAI_MAIN_MODULE,
+                    TAI_ANY_LIBRARY,
+                    0xCA9D41D1,
+                    sceGxmDepthStencilSurfaceInit_patched);
 }

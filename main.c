@@ -110,7 +110,11 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
             break;
         case MENU_GRAPHICS_3:
             drawGraphics3Menu(pParam);
-            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_2, MENU_TITLE_MEMORY);
+            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_2, MENU_TITLE_GRAPHICS_4);
+            break;
+        case MENU_GRAPHICS_4:
+            drawGraphics4Menu(pParam);
+            drawNextSectionIndicator(pParam, MENU_TITLE_GRAPHICS_3, MENU_TITLE_MEMORY);
             break;
         case MENU_MEMORY:
             drawMemoryMenu(pParam);
