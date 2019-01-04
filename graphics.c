@@ -284,6 +284,11 @@ static void addTexture(
         if (g_textures[i].texture == texture) {
             goto RET_EXISTING;
         }
+        if (g_textures[i].texture &&
+                g_textures[i].width == width &&
+                g_textures[i].height == height) {
+            goto RET_SKIP;
+        }
     }
     for (i = 0; i < MAX_TEXTURES; i++) {
         if (!g_textures[i].texture) {
@@ -302,6 +307,10 @@ RET_EXISTING:
     g_textures[i].height = height;
     g_textures[i].mipCount = mipCount;
     g_textures[i].byteStride = byteStride;
+    return;
+RET_SKIP:
+    g_texturesCount++;
+    return;
 }
 
 static int sceGxmTextureInitSwizzled_patched(
@@ -567,7 +576,7 @@ void drawGraphics5Menu(const SceDisplayFrameBuf *pParam) {
 
     // Header
     osdSetTextScale(1);
-    osdDrawStringF(10, 60, "Textures (%d):", g_texturesCount);
+    osdDrawStringF(10, 60, "Textures (showing only 1 per size):");
     if (g_texturesCount > MAX_TEXTURES) {
         char buf[32];
         snprintf(buf, 32, "!! > %d", MAX_TEXTURES);
