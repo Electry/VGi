@@ -81,8 +81,8 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
     osdUpdateFrameBuf(pParam);
 
     // BG
-    osdSetBgColor(0, 0, 0, 255);
-    osdClearScreen();
+    osdSetBgColor(0, 0, 0, 225);
+    osdFastDrawRectangle(0, 0, pParam->width, pParam->height);
 
     // Watermark
     osdSetBgColor(0, 0, 0, 0);
@@ -132,6 +132,7 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
             break;
     }
 
+    sceDisplayWaitSetFrameBufMulti(4);
 CONT:
     return TAI_CONTINUE(int, g_hookrefs[0], pParam, sync);
 }
