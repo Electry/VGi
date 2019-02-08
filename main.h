@@ -8,6 +8,7 @@
 #define MENU_TITLE_GRAPHICS_4 "Depth/Stencil Surfaces"
 #define MENU_TITLE_GRAPHICS_5 "Textures"
 #define MENU_TITLE_MEMORY     "Memory"
+#define MENU_TITLE_THREADS    "Threads"
 #define MENU_TITLE_MISC       "Misc"
 #define MENU_TITLE_DEVICE     "Device"
 
@@ -19,6 +20,7 @@ typedef enum {
     MENU_GRAPHICS_4,
     MENU_GRAPHICS_5,
     MENU_MEMORY,
+    MENU_THREADS,
     MENU_MISC,
     MENU_DEVICE,
     MENU_MAX
@@ -43,6 +45,9 @@ void drawGraphics5Menu(const SceDisplayFrameBuf *pParam);
 
 void setupMemoryMenu();
 void drawMemoryMenu(const SceDisplayFrameBuf *pParam);
+
+void setupThreadsMenu();
+void drawThreadsMenu(const SceDisplayFrameBuf *pParam);
 
 void setupMiscMenu();
 void drawMiscMenu(const SceDisplayFrameBuf *pParam);

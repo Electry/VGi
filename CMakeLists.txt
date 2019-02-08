@@ -20,6 +20,7 @@ add_executable(${PROJECT_NAME}
   appinfo.c
   graphics.c
   memory.c
+  threads.c
   misc.c
   device.c
 )
