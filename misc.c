@@ -19,68 +19,84 @@ static uint8_t sceTouchRead_front = 0;
 static uint8_t sceTouchRead_back = 0;
 
 static int sceCtrlPeekBufferPositive_patched(int port, SceCtrlData *pad_data, int count) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[13], port, pad_data, count);
     sceCtrlPeekBufferPositive_used = 1;
-    if (g_menuVisible)
-        return 0;
-    return TAI_CONTINUE(int, g_hookrefs[13], port, pad_data, count);
+
+    if (g_menuVisible && pad_data)
+        pad_data->buttons = 0;
+
+    return ret;
 }
 static int sceCtrlPeekBufferNegative_patched(int port, SceCtrlData *pad_data, int count) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[14], port, pad_data, count);
     sceCtrlPeekBufferNegative_used = 1;
-    if (g_menuVisible)
-        return 0;
-    return TAI_CONTINUE(int, g_hookrefs[14], port, pad_data, count);
+
+    if (g_menuVisible && pad_data)
+        pad_data->buttons = 0;
+
+    return ret;
 }
 static int sceCtrlReadBufferPositive_patched(int port, SceCtrlData *pad_data, int count) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[15], port, pad_data, count);
     sceCtrlReadBufferPositive_used = 1;
-    if (g_menuVisible)
-        return 0;
-    return TAI_CONTINUE(int, g_hookrefs[15], port, pad_data, count);
+
+    if (g_menuVisible && pad_data)
+        pad_data->buttons = 0;
+
+    return ret;
 }
 static int sceCtrlReadBufferNegative_patched(int port, SceCtrlData *pad_data, int count) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[16], port, pad_data, count);
     sceCtrlReadBufferNegative_used = 1;
-    if (g_menuVisible)
-        return 0;
-    return TAI_CONTINUE(int, g_hookrefs[16], port, pad_data, count);
+
+    if (g_menuVisible && pad_data)
+        pad_data->buttons = 0;
+
+    return ret;
 }
 
 static int sceMotionGetState_patched(SceMotionState *motionState) {
     sceMotionGetState_used = 1;
-    if (g_menuVisible)
-        return 0;
     return TAI_CONTINUE(int, g_hookrefs[17], motionState);
 }
 static int sceMotionGetSensorState_patched(SceMotionSensorState *sensorState, int numRecords) {
     sceMotionGetSensorState_used = 1;
-    if (g_menuVisible)
-        return 0;
     return TAI_CONTINUE(int, g_hookrefs[18], sensorState, numRecords);
 }
 static int sceMotionGetBasicOrientation_patched(SceFVector3 *basicOrientation) {
     sceMotionGetBasicOrientation_used = 1;
-    if (g_menuVisible)
-        return 0;
     return TAI_CONTINUE(int, g_hookrefs[19], basicOrientation);
 }
 
 static int sceTouchPeek_patched(SceUInt32 port, SceTouchData *pData, SceUInt32 nBufs) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[20], port, pData, nBufs);
     if (port == SCE_TOUCH_PORT_FRONT) {
         sceTouchPeek_front = 1;
     } else if (port == SCE_TOUCH_PORT_BACK) {
         sceTouchPeek_back = 1;
     }
-    if (g_menuVisible)
-        return 0;
-    return TAI_CONTINUE(int, g_hookrefs[20], port, pData, nBufs);
+
+    if (g_menuVisible && pData) {
+        pData->reportNum = 0;
+        memset(pData->report, 0, sizeof(SceTouchReport) * SCE_TOUCH_MAX_REPORT);
+    }
+
+    return ret;
 }
 static int sceTouchRead_patched(SceUInt32 port, SceTouchData *pData, SceUInt32 nBufs) {
+    int ret = TAI_CONTINUE(int, g_hookrefs[21], port, pData, nBufs);
     if (port == SCE_TOUCH_PORT_FRONT) {
         sceTouchRead_front = 1;
     } else if (port == SCE_TOUCH_PORT_BACK) {
         sceTouchRead_back = 1;
     }
-    if (g_menuVisible)
-        return 0;
-    return TAI_CONTINUE(int, g_hookrefs[21], port, pData, nBufs);
+
+    if (g_menuVisible && pData) {
+        pData->reportNum = 0;
+        memset(pData->report, 0, sizeof(SceTouchReport) * SCE_TOUCH_MAX_REPORT);
+    }
+
+    return ret;
 }
 
 void drawMiscMenu(const SceDisplayFrameBuf *pParam) {
