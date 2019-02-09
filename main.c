@@ -147,7 +147,7 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
             break;
         case MENU_MISC:
             drawMiscMenu(pParam);
-            drawNextSectionIndicator(pParam, MENU_TITLE_MEMORY, MENU_TITLE_DEVICE);
+            drawNextSectionIndicator(pParam, MENU_TITLE_THREADS, MENU_TITLE_DEVICE);
             break;
         case MENU_DEVICE:
             drawDeviceMenu(pParam);
