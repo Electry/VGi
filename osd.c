@@ -1,11 +1,17 @@
 #include <vitasdk.h>
 
 #include "osd.h"
-#include "osd_font.h"
+#include "osd_font_ter-u14b.h"
+#include "osd_font_ter-u18b.h"
+#include "osd_font_ter-u24b.h"
 
-#define OSD_MAX_STRING_LENGTH  512
+#define OSD_MAX_STRING_LENGTH 512
 
 static SceDisplayFrameBuf g_framebuf;
+static const unsigned char *g_font;
+static unsigned char g_font_width;
+static unsigned char g_font_height;
+
 static uint8_t g_font_scale = 1;
 
 static RGBA g_color_text = {.rgba = {255, 255, 255, 255}};
@@ -18,12 +24,30 @@ RGBA osdBlendColor(RGBA fg, RGBA bg) {
     result.rgba.b = ((fg.rgba.a * fg.rgba.b + inv_alpha * bg.rgba.b) >> 8); // B
     result.rgba.g = ((fg.rgba.a * fg.rgba.g + inv_alpha * bg.rgba.g) >> 8); // G
     result.rgba.r = ((fg.rgba.a * fg.rgba.r + inv_alpha * bg.rgba.r) >> 8); // R
-    result.rgba.a = 0xFF;                                         // A
+    result.rgba.a = 0xFF; // A
     return result;
 }
 
 void osdUpdateFrameBuf(const SceDisplayFrameBuf *pParam) {
     memcpy(&g_framebuf, pParam, sizeof(SceDisplayFrameBuf));
+
+    // Set appropriate font
+    if (pParam->width <= 640) {
+        // 640x368 - Terminus 8x14 Bold
+        g_font = g_font_ter_u14b;
+        g_font_width = g_font_ter_u14b_width;
+        g_font_height = g_font_ter_u14b_height;
+    } else if (pParam->width <= 720) {
+        // 720x408 - Terminus 10x18 Bold
+        g_font = g_font_ter_u18b;
+        g_font_width = g_font_ter_u18b_width;
+        g_font_height = g_font_ter_u18b_height;
+    } else {
+        // 960x544 - Terminus 12x24 Bold
+        g_font = g_font_ter_u24b;
+        g_font_width = g_font_ter_u24b_width;
+        g_font_height = g_font_ter_u24b_height;
+    }
 }
 
 void osdSetTextColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -39,12 +63,16 @@ void osdSetBgColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     g_color_bg.rgba.a = a;
 }
 
+
 void osdSetTextScale(uint8_t scale) {
     g_font_scale = scale;
 }
 
 uint32_t osdGetTextWidth(const char *str) {
-    return strlen(str) * FONT_WIDTH * g_font_scale;
+    return strlen(str) * g_font_width * g_font_scale;
+}
+uint32_t osdGetLineHeight() {
+    return g_font_height * g_font_scale;
 }
 
 /**
@@ -109,7 +137,7 @@ void osdDrawRectangle(int x, int y, int width, int height) {
  * Draws single character
  */
 void osdDrawCharacter(const char character, int x, int y) {
-    for (int yy = 0; yy < FONT_HEIGHT * g_font_scale; yy++) {
+    for (int yy = 0; yy < g_font_height * g_font_scale; yy++) {
         int yy_font = yy / g_font_scale;
         uint32_t displacement = x + (y + yy) * g_framebuf.pitch;
         RGBA *screenRGB = (RGBA *)g_framebuf.base + displacement;
@@ -117,15 +145,16 @@ void osdDrawCharacter(const char character, int x, int y) {
         if (displacement >= g_framebuf.pitch * g_framebuf.height)
             return; // out of bounds
 
-        for (int xx = 0; xx < FONT_WIDTH * g_font_scale; xx++) {
+        for (int xx = 0; xx < g_font_width * g_font_scale; xx++) {
             if (x + xx >= g_framebuf.width)
                 return; // out of bounds
 
             // Get px 0/1 from osd_font.h
             int xx_font = xx / g_font_scale;
-            uint32_t charPos = character * (FONT_HEIGHT * ((FONT_WIDTH / 8) + 1));
-            uint32_t charPosH = charPos + (yy_font * ((FONT_WIDTH / 8) + 1));
+            uint32_t charPos = character * (g_font_height * (((g_font_width - 1) / 8) + 1));
+            uint32_t charPosH = charPos + (yy_font * (((g_font_width - 1) / 8) + 1));
             uint8_t charByte = g_font[charPosH + (xx_font / 8)];
+
             RGBA clr = ((charByte >> (7 - (xx_font % 8))) & 1) ? g_color_text : g_color_bg;
 
             if (clr.rgba.a) { // alpha != 0
@@ -144,7 +173,7 @@ void osdDrawCharacter(const char character, int x, int y) {
  */
 void osdDrawString(int x, int y, const char *str) {
     for (size_t i = 0; i < strlen(str); i++)
-        osdDrawCharacter(str[i], x + i * FONT_WIDTH * g_font_scale, y);
+        osdDrawCharacter(str[i], x + i * g_font_width * g_font_scale, y);
 }
 
 /**

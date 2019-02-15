@@ -17,12 +17,18 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions")
 add_executable(${PROJECT_NAME}
   main.c
   osd.c
-  appinfo.c
-  graphics.c
-  memory.c
-  threads.c
-  misc.c
-  device.c
+  core/appinfo.c
+  core/graphics.c
+  core/graphics_rt.c
+  core/graphics_cs.c
+  core/graphics_dss.c
+  core/graphics_tex.c
+  core/graphics_scenes.c
+  core/graphics_misc.c
+  core/memory.c
+  core/threads.c
+  core/input.c
+  core/device.c
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -36,7 +42,9 @@ target_link_libraries(${PROJECT_NAME}
   SceSysmem_stub
   SceLibc_stub
   ScePower_stub
+  SceIofilemgr_stub
   SceLibKernel_stub
+  SceGxm_stub
 )
 
 set_target_properties(${PROJECT_NAME}
