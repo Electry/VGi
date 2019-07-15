@@ -15,20 +15,21 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-q -Wall -O3 -std=gnu99")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions")
 
 add_executable(${PROJECT_NAME}
-  main.c
-  osd.c
-  core/appinfo.c
-  core/graphics.c
-  core/graphics_rt.c
-  core/graphics_cs.c
-  core/graphics_dss.c
-  core/graphics_tex.c
-  core/graphics_scenes.c
-  core/graphics_misc.c
-  core/memory.c
-  core/threads.c
-  core/input.c
-  core/device.c
+  src/main.c
+  src/osd.c
+  src/core/appinfo.c
+  src/core/graphics.c
+  src/core/graphics_rt.c
+  src/core/graphics_cs.c
+  src/core/graphics_dss.c
+  src/core/graphics_tex.c
+  src/core/graphics_scenes.c
+  src/core/graphics_misc.c
+  src/core/graphics_cg.c
+  src/core/memory.c
+  src/core/threads.c
+  src/core/input.c
+  src/core/device.c
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -45,6 +46,7 @@ target_link_libraries(${PROJECT_NAME}
   SceIofilemgr_stub
   SceLibKernel_stub
   SceGxm_stub
+  SceProcessmgr_stub
 )
 
 set_target_properties(${PROJECT_NAME}
