@@ -1,12 +1,16 @@
 #include <vitasdk.h>
 #include <taihen.h>
+#include <stdbool.h>
 
-#include "osd.h"
+#include "gui.h"
 #include "main.h"
+#include "log.h"
+#include "net/net.h"
+#include "net/cmd.h"
 
 // OSD hook
-SceUID         sceDisplaySetFrameBuf_hook = {0};
-tai_hook_ref_t sceDisplaySetFrameBuf_hookref = {0};
+SceUID         g_sceDisplaySetFrameBuf_hook = {0};
+tai_hook_ref_t g_sceDisplaySetFrameBuf_hookref = {0};
 
 // Core hooks
 SceUID         g_hooks[HOOK_MAX] = {0};
@@ -15,40 +19,35 @@ tai_hook_ref_t g_hookrefs[HOOK_MAX] = {0};
 uint8_t g_scroll = 0;
 uint8_t g_visible = 0;
 
-static VGi_Section  g_section = SECTION_MENU;
-static unsigned int g_buttonsPressed = 0;
-static SceUInt32    g_buttonsLastScrollTime = 0;
+static vgi_section_t g_section = SECTION_MENU;
+static uint32_t    g_buttons_pressed = 0;
+static uint32_t    g_buttons_last_scroll_time = 0;
 
-static const char * const g_sectionTitle[SECTION_MAX] = {
-    "VGi",
-    "App Info",
-    "Graphics",
-    "Render Targets",
-    "Color Surfaces",
-    "Depth/Stencil Surfaces",
-    "Textures",
-    "Gxm Scenes",
-    "Gxm Misc",
-    "Shaders",
-    "Memory",
-    "Threads",
-    "Input",
-    "Device"
+static bool g_net_started = false;
+static int g_net_delay_frames = 0;
+
+static const char * const SECTION_TITLE[SECTION_MAX] = {
+    [SECTION_MENU]            = "VGi",
+    [SECTION_APP_INFO]        = "App Info",
+    [SECTION_GRAPHICS]        = "Graphics",
+    [SECTION_GRAPHICS_RT]     = "Render Targets",
+    [SECTION_GRAPHICS_CS]     = "Color Surfaces",
+    [SECTION_GRAPHICS_DSS]    = "Depth/Stencil Surfaces",
+    [SECTION_GRAPHICS_TEX]    = "Textures",
+    [SECTION_GRAPHICS_SCENES] = "Gxm Scenes",
+    [SECTION_GRAPHICS_MISC]   = "Gxm Misc",
+    [SECTION_GRAPHICS_CG]     = "Shaders",
+    [SECTION_MEMORY]          = "Memory",
+    [SECTION_THREADS]         = "Threads",
+    [SECTION_INPUT]           = "Input",
+    [SECTION_DEVICE]          = "Device"
 };
 
-void hookFunctionImport(uint32_t nid, uint32_t id, const void *func) {
-    if (g_hooks[id] > 0)
-        return;
-
-    g_hooks[id] = taiHookFunctionImport(&g_hookrefs[id], TAI_MAIN_MODULE,
-                                        TAI_ANY_LIBRARY, nid, func);
-}
-
-static void checkButtons() {
+static void check_buttons() {
     SceCtrlData ctrl;
     sceCtrlPeekBufferPositive(0, &ctrl, 1);
-    unsigned int buttons = ctrl.buttons & ~g_buttonsPressed;
-    g_buttonsPressed = ctrl.buttons;
+    unsigned int buttons = ctrl.buttons & ~g_buttons_pressed;
+    g_buttons_pressed = ctrl.buttons;
     SceUInt32 time_now = sceKernelGetProcessTimeLow();
 
     // Toggle VGi
@@ -72,209 +71,241 @@ static void checkButtons() {
             g_section = SECTION_MENU;
         }
 
+        // Scroll between sections
+        if (buttons & SCE_CTRL_RTRIGGER && g_section < SECTION_MAX - 1) {
+            g_section++;
+        } else if (buttons & SCE_CTRL_LTRIGGER && g_section > SECTION_MENU + 1) {
+            g_section--;
+        }
+
         // Scroll UP
         if (ctrl.buttons & SCE_CTRL_UP &&
                 (buttons & SCE_CTRL_UP ||
-                time_now - g_buttonsLastScrollTime > BUTTONS_FAST_MOVE_DELAY)) {
+                time_now - g_buttons_last_scroll_time > BUTTONS_FAST_MOVE_DELAY)) {
             if (g_scroll > 0)
                 g_scroll--;
 
             if (buttons & SCE_CTRL_UP)
-                g_buttonsLastScrollTime = time_now;
+                g_buttons_last_scroll_time = time_now;
         }
         // Scroll DOWN
         if (ctrl.buttons & SCE_CTRL_DOWN &&
                 (buttons & SCE_CTRL_DOWN ||
-                time_now - g_buttonsLastScrollTime > BUTTONS_FAST_MOVE_DELAY)) {
+                time_now - g_buttons_last_scroll_time > BUTTONS_FAST_MOVE_DELAY)) {
             if (g_scroll < 255)
                 g_scroll++;
 
             if (buttons & SCE_CTRL_DOWN)
-                g_buttonsLastScrollTime = time_now;
+                g_buttons_last_scroll_time = time_now;
         }
 
         // Section-specific controls
-        if (g_section == SECTION_GRAPHICS) {
-            checkButtonsGraphics(ctrl.buttons, buttons);
+        switch (g_section) {
+            default: break;
+            case SECTION_GRAPHICS:
+                vgi_check_buttons_graphics(ctrl.buttons, buttons);
+                break;
         }
     }
 }
 
-void drawScrollIndicator(int x, int y, uint8_t scroll_down, int count) {
-    if (count <= 0)
-        return;
+static void draw_hints() {
+    vgi_gui_set_back_color(0, 0, 0, 0);
+    vgi_gui_set_text_color(255, 255, 255, 255);
+    vgi_gui_set_text_scale(1.0f);
 
-    if (scroll_down) {
-        osdDrawStringF(x, y, "%2d", count);
-        osdDrawStringF(x, y + osdGetLineHeight(), "\\/");
-    } else {
-        osdDrawStringF(x, y, "/\\");
-        osdDrawStringF(x, y + osdGetLineHeight(), "%2d", count);
+    switch (g_section) {
+        case SECTION_MENU:
+            vgi_gui_print(GUI_ANCHOR_CX(21), GUI_ANCHOR_BY(2, 1),
+                    "X Select | D-PAD Move");
+            break;
+        case SECTION_GRAPHICS_RT:
+        case SECTION_GRAPHICS_CS:
+        case SECTION_GRAPHICS_DSS:
+        case SECTION_GRAPHICS_TEX:
+        case SECTION_GRAPHICS_MISC:
+        case SECTION_GRAPHICS_CG:
+        case SECTION_MEMORY:
+        case SECTION_THREADS:
+            vgi_gui_print(GUI_ANCHOR_CX(20), GUI_ANCHOR_BY(2, 1),
+                    "[] Menu | D-PAD Move");
+            break;
+        default:
+            vgi_gui_print(GUI_ANCHOR_CX(7), GUI_ANCHOR_BY(2, 1),
+                    "[] Menu");
+            break;
+    }
+
+    if (vgi_net_is_running()) {
+        SceNetCtlInfo ip;
+        sceNetCtlInetGetInfo(SCE_NETCTL_INFO_GET_IP_ADDRESS, &ip);
+        bool connected = vgi_cmd_is_client_connected();
+
+        vgi_gui_printf(GUI_ANCHOR_LX(5, 0), GUI_ANCHOR_BY(2, 1),
+                "%s:%d", ip.ip_address, CMD_PORT);
+        vgi_gui_printf(GUI_ANCHOR_RX(5, connected ? 9 : 12), GUI_ANCHOR_BY(2, 1),
+                "%s", connected ? "Connected" : "Disconnected");
     }
 }
 
-static void drawHints(const SceDisplayFrameBuf *pParam) {
-    char buf[64];
-    osdSetTextColor(255, 255, 255, 255);
-    osdSetTextScale(1);
+static void draw_menu() {
+    char label[128];
+    vgi_gui_set_text_scale(1.0f);
 
-    if (g_section == SECTION_MENU) {
-        snprintf(buf, 64, "X Select");
-    } else {
-        snprintf(buf, 64, "[] Menu");
-    }
-
-    // Scrollable sections
-    if (g_section == SECTION_MENU ||
-            g_section == SECTION_GRAPHICS_RT ||
-            g_section == SECTION_GRAPHICS_CS ||
-            g_section == SECTION_GRAPHICS_DSS ||
-            g_section == SECTION_GRAPHICS_TEX ||
-            g_section == SECTION_GRAPHICS_MISC ||
-            g_section == SECTION_GRAPHICS_CG ||
-            g_section == SECTION_MEMORY ||
-            g_section == SECTION_THREADS) {
-        snprintf(buf, 64, "%s | D-PAD Move", buf);
-    }
-
-    // Draw text
-    osdSetBgColor(0, 0, 0, 0);
-    osdDrawStringF((pParam->width / 2) - (osdGetTextWidth(buf) / 2),
-                    pParam->height - osdGetLineHeight() - 2, "%s", buf);
-}
-
-static void drawMenu(const SceDisplayFrameBuf *pParam) {
-
-    osdSetTextColor(255, 255, 255, 255);
-    osdSetTextScale(1);
-    int x = (pParam->width / 2);
-    int y = (pParam->height / 2) - (((osdGetLineHeight() + 4) * SECTION_MAX) / 2);
-    char title[128];
-
-    // Update global
+    // Clamp scroll position
     g_scroll = MAX(SECTION_MENU + 1, MIN(SECTION_MAX - 1, g_scroll));
 
-    for (VGi_Section i = SECTION_MENU + 1; i < SECTION_MAX; i++) {
-        snprintf(title, 128, "%s%s%s",
+    for (vgi_section_t i = SECTION_MENU + 1; i < SECTION_MAX; i++) {
+        snprintf(label, sizeof(label), "%s%s%s",
                 g_scroll == i ? "> " : "",
-                g_sectionTitle[i],
+                SECTION_TITLE[i],
                 g_scroll == i ? " <" : "");
 
         if (g_scroll == i)
-            osdSetTextColor(0, 255, 255, 255);
+            vgi_gui_set_text_color(0, 255, 255, 255);
         else
-            osdSetTextColor(255, 255, 255, 255);
+            vgi_gui_set_text_color(255, 255, 255, 255);
 
-        osdDrawStringF(x - (osdGetTextWidth(title) / 2),
-                    y += osdGetLineHeight() + 4,
-                    title);
+        vgi_gui_printf(GUI_ANCHOR_CX(strlen(label)),
+                        GUI_ANCHOR_CY(SECTION_MAX - 1) + GUI_ANCHOR_TY(0, i - 1),
+                        label);
     }
 }
 
 static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int sync) {
+    vgi_gui_set_framebuf(pParam);
 
     // Check for pressed buttons
-    checkButtons();
+    check_buttons();
 
-    if (!g_visible)
+    // Start net if not running
+    if (!g_net_started) {
+        g_net_delay_frames++;
+
+        if (g_net_delay_frames >= 30 * 5) {
+            vgi_net_start();
+            g_net_started = true;
+        }
+    }
+
+    if (!g_visible) {
+        // Draw net info
+        vgi_gui_set_back_color(0, 0, 0, 0);
+        vgi_gui_set_text_color(0, 255, 0, 255);
+        vgi_gui_printf(0, 0, vgi_cmd_is_client_connected() ? ":)" : ":(");
         goto CONT;
+    }
 
-    osdUpdateFrameBuf(pParam);
-
-    // BG
-    osdSetBgColor(0, 0, 0, 225);
-    osdFastDrawRectangle(0, 0, pParam->width, pParam->height);
+    // Background
+    vgi_gui_set_back_color(0, 0, 0, 225);
+    vgi_gui_clear_screen();
 
     // Watermark
-    osdSetBgColor(0, 0, 0, 0);
-    osdSetTextColor(10, 20, 50, 255);
-    osdSetTextScale(3);
-    int byH = osdGetLineHeight();
-    osdDrawStringF(30, pParam->height - byH - 10, "by Electry");
-    osdSetTextScale(5);
-    osdDrawStringF(10, pParam->height - byH - osdGetLineHeight(),
-                    "VGi %s", VGi_VERSION);
+    vgi_gui_set_back_color(0, 0, 0, 0);
+    vgi_gui_set_text_color(10, 20, 50, 255);
 
-    // Section region
-    int minX = 10, minY, maxX = pParam->width - 10, maxY;
+    vgi_gui_set_text_scale(5.0f);
+    vgi_gui_printf(GUI_ANCHOR_LX(10, 0),
+                    GUI_ANCHOR_BY2(65, 1, 5.0f),
+                    "VGi " VGi_VERSION);
 
-    // Title
-    osdSetTextScale(2);
-    osdSetTextColor(255, 255, 255, 255);
-    osdDrawStringF((pParam->width / 2) - (osdGetTextWidth(g_sectionTitle[g_section]) / 2), 5,
-                    g_sectionTitle[g_section]);
-    minY = osdGetLineHeight() + 10;
+    vgi_gui_set_text_scale(3.0f);
+    vgi_gui_printf(GUI_ANCHOR_LX(30, 0),
+                    GUI_ANCHOR_BY2(10, 1, 3.0f),
+                    "by Electry");
+
+    // Section title
+    vgi_gui_set_text_scale(2.0f);
+    vgi_gui_set_text_color(255, 255, 255, 255);
+    vgi_gui_printf(GUI_ANCHOR_CX2(strlen(SECTION_TITLE[g_section]), 2.0f),
+                    GUI_ANCHOR_TY(5, 0),
+                    SECTION_TITLE[g_section]);
 
     // Hints
-    drawHints(pParam);
-    maxY = pParam->height - osdGetLineHeight() * 2;
+    draw_hints();
 
     // Section content
-    osdSetTextScale(1);
-    osdSetTextColor(255, 255, 255, 255);
+    vgi_gui_set_text_scale(1.0f);
+    int xoff  = 10;
+    int x2off = 10;
+    int yoff  = 75;
+    int y2off = 30;
 
     switch (g_section) {
-        case SECTION_MENU:            drawMenu(pParam); break;
-        case SECTION_APP_INFO:        drawAppInfo(minX, minY, maxX, maxY); break;
-        case SECTION_GRAPHICS:        drawGraphics(minX, minY, maxX, maxY, pParam); break;
-        case SECTION_GRAPHICS_RT:     drawGraphicsRT(minX, minY, maxX, maxY); break;
-        case SECTION_GRAPHICS_CS:     drawGraphicsCS(minX, minY, maxX, maxY); break;
-        case SECTION_GRAPHICS_DSS:    drawGraphicsDSS(minX, minY, maxX, maxY); break;
-        case SECTION_GRAPHICS_TEX:    drawGraphicsTex(minX, minY, maxX, maxY); break;
-        case SECTION_GRAPHICS_SCENES: drawGraphicsScenes(minX, minY, maxX, maxY); break;
-        case SECTION_GRAPHICS_MISC:   drawGraphicsMisc(minX, minY, maxX, maxY); break;
-        case SECTION_GRAPHICS_CG:     drawGraphicsCg(minX, minY, maxX, maxY); break;
-        case SECTION_MEMORY:          drawMemory(minX, minY, maxX, maxY); break;
-        case SECTION_THREADS:         drawThreads(minX, minY, maxX, maxY); break;
-        case SECTION_INPUT:           drawInput(minX, minY, maxX, maxY); break;
-        case SECTION_DEVICE:          drawDevice(minX, minY, maxX, maxY); break;
-        case SECTION_MAX:             break;
+        case SECTION_MENU:            draw_menu(); break;
+        case SECTION_APP_INFO:        vgi_draw_appinfo(xoff, yoff, x2off, y2off); break;
+        case SECTION_GRAPHICS:        vgi_draw_graphics(xoff, yoff, x2off, y2off); break;
+        case SECTION_GRAPHICS_RT:     vgi_draw_graphics_rt(xoff, yoff, x2off, y2off); break;
+        case SECTION_GRAPHICS_CS:     vgi_draw_graphics_cs(xoff, yoff, x2off, y2off); break;
+        case SECTION_GRAPHICS_DSS:    vgi_draw_graphics_dss(xoff, yoff, x2off, y2off); break;
+        case SECTION_GRAPHICS_TEX:    vgi_draw_graphics_tex(xoff, yoff, x2off, y2off); break;
+        case SECTION_GRAPHICS_SCENES: vgi_draw_graphics_scenes(xoff, yoff, x2off, y2off); break;
+        case SECTION_GRAPHICS_MISC:   vgi_draw_graphics_misc(xoff, yoff, x2off, y2off); break;
+        case SECTION_GRAPHICS_CG:     vgi_draw_graphics_cg(xoff, yoff, x2off, y2off); break;
+        case SECTION_MEMORY:          vgi_draw_memory(xoff, yoff, x2off, y2off); break;
+        case SECTION_THREADS:         vgi_draw_threads(xoff, yoff, x2off, y2off); break;
+        case SECTION_INPUT:           vgi_draw_input(xoff, yoff, x2off, y2off); break;
+        case SECTION_DEVICE:          vgi_draw_device(xoff, yoff, x2off, y2off); break;
+        default:                      break;
     }
 
     sceDisplayWaitSetFrameBufMulti(4);
 CONT:
-    return TAI_CONTINUE(int, sceDisplaySetFrameBuf_hookref, pParam, sync);
+    return TAI_CONTINUE(int, g_sceDisplaySetFrameBuf_hookref, pParam, sync);
 }
 
 void _start() __attribute__ ((weak, alias ("module_start")));
 int module_start(SceSize argc, const void *args) {
+    // Setup display hook
+    g_sceDisplaySetFrameBuf_hook = taiHookFunctionImport(
+            &g_sceDisplaySetFrameBuf_hookref,
+            TAI_MAIN_MODULE,
+            TAI_ANY_LIBRARY,
+            0x7A410B64,
+            sceDisplaySetFrameBuf_patched);
 
-    sceDisplaySetFrameBuf_hook = taiHookFunctionImport(
-                    &sceDisplaySetFrameBuf_hookref,
-                    TAI_MAIN_MODULE,
-                    TAI_ANY_LIBRARY,
-                    0x7A410B64,
-                    sceDisplaySetFrameBuf_patched);
+    // Setup core hooks
+    vgi_setup_appinfo();
+    vgi_setup_graphics();
+    vgi_setup_graphics_rt();
+    vgi_setup_graphics_cs();
+    vgi_setup_graphics_dss();
+    vgi_setup_graphics_tex();
+    vgi_setup_graphics_scenes();
+    vgi_setup_graphics_misc();
+    vgi_setup_graphics_cg();
+    vgi_setup_memory();
+    vgi_setup_threads();
+    vgi_setup_input();
+    vgi_setup_device();
 
-    // Setup hooks, etc...
-    setupAppInfo();
-    setupGraphics();
-    setupGraphicsRT();
-    setupGraphicsCS();
-    setupGraphicsDSS();
-    setupGraphicsTex();
-    setupGraphicsScenes();
-    setupGraphicsMisc();
-    setupGraphicsCg();
-    setupMemory();
-    setupThreads();
-    setupInput();
-    setupDevice();
+    if (strncmp(g_app_titleid, "VITASHELL", 9)) {
+        vgi_log_prepare();
+        vgi_log_printf("VGi " VGi_VERSION "\n");
+        vgi_log_printf("Title: %s\n", g_app_titleid);
+        vgi_log_printf("------------------------------------- module_start():end\n");
+        vgi_log_flush();
+    }
 
     return SCE_KERNEL_START_SUCCESS;
 }
 
 int module_stop(SceSize argc, const void *args) {
+    // Stop net callback thread
+    vgi_net_stop();
 
-    // Release OSD hook
-    if (sceDisplaySetFrameBuf_hook >= 0)
-        taiHookRelease(sceDisplaySetFrameBuf_hook, sceDisplaySetFrameBuf_hookref);
+    // Release display hook
+    if (g_sceDisplaySetFrameBuf_hook >= 0)
+        taiHookRelease(g_sceDisplaySetFrameBuf_hook, g_sceDisplaySetFrameBuf_hookref);
 
     // Release core hooks
     for (int i = 0; i < HOOK_MAX; i++) {
         if (g_hooks[i] >= 0)
             taiHookRelease(g_hooks[i], g_hookrefs[i]);
     }
+
+    // Flush log
+    vgi_log_flush();
 
     return SCE_KERNEL_STOP_SUCCESS;
 }

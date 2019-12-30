@@ -2,7 +2,7 @@
 #include <taihen.h>
 #include <stdbool.h>
 
-#include "../osd.h"
+#include "../gui.h"
 #include "../main.h"
 
 struct mem_callback_table1 {
@@ -33,48 +33,42 @@ struct process_param {
 };
 
 struct malloc_managed_size {
-  size_t max_system_size;
-  size_t current_system_size;
-  size_t max_inuse_size;
-  size_t current_inuse_size;
-  char pad0[4 * 4];
+    size_t max_system_size;
+    size_t current_system_size;
+    size_t max_inuse_size;
+    size_t current_inuse_size;
+    char pad0[4 * 4];
 };
 
-typedef struct {
-    uint8_t success;
-    uint8_t active;
-    char name[128];
-    SceKernelMemBlockType type;
-    int size;
-    SceUID ret;
-    void *base;
-} VGi_MemBlock;
+struct process_param *sceKernelGetProcessParam();
+int malloc_stats_fast(struct malloc_managed_size *mmsize);
 
-static VGi_MemBlock g_memBlocks[MAX_MEM_BLOCKS] = {0};
-static uint32_t g_memBlocksCount = 0;
-static SceKernelFreeMemorySizeInfo g_startFreeMem = {0};
+static vgi_memblock_t g_memblocks[MAX_MEM_BLOCKS] = {0};
+static uint32_t g_memblocks_count = 0;
+static SceKernelFreeMemorySizeInfo g_start_free_mem = {0};
 
-static bool g_hasCustomHeapImpl = false;
-static uint32_t g_customHeapInitFnPtr = 0;
+static bool g_has_custom_heap_impl = false;
+static uint32_t g_custom_heap_init_fn_ptr = 0;
 
 static SceUID sceKernelAllocMemBlock_patched(
         const char *name,
         SceKernelMemBlockType type,
         int size,
-        void *optp) {
+        void *optp
+) {
     SceUID ret = TAI_CONTINUE(SceUID, g_hookrefs[HOOK_SCE_KERNEL_ALLOC_MEM_BLOCK],
                                 name, type, size, optp);
 
     for (int i = 0; i < MAX_MEM_BLOCKS; i++) {
-        if (!g_memBlocks[i].active) {
-            g_memBlocks[i].active = 1;
-            g_memBlocks[i].success = ret >= SCE_OK;
-            strncpy(g_memBlocks[i].name, name, 128);
-            g_memBlocks[i].type = type;
-            g_memBlocks[i].size = size;
-            g_memBlocks[i].ret = ret;
-            sceKernelGetMemBlockBase(ret, &(g_memBlocks[i].base));
-            g_memBlocksCount++;
+        if (!g_memblocks[i].active) {
+            g_memblocks[i].active = 1;
+            g_memblocks[i].success = ret >= SCE_OK;
+            strncpy(g_memblocks[i].name, name, 128);
+            g_memblocks[i].type = type;
+            g_memblocks[i].size = size;
+            g_memblocks[i].ret = ret;
+            sceKernelGetMemBlockBase(ret, &(g_memblocks[i].base));
+            g_memblocks_count++;
             break;
         }
     }
@@ -88,9 +82,9 @@ static int sceKernelFreeMemBlock_patched(SceUID uid) {
         return ret;
 
     for (int i = 0; i < MAX_MEM_BLOCKS; i++) {
-        if (g_memBlocks[i].active && g_memBlocks[i].ret == uid) {
-            g_memBlocks[i].active = 0;
-            g_memBlocksCount--;
+        if (g_memblocks[i].active && g_memblocks[i].ret == uid) {
+            g_memblocks[i].active = 0;
+            g_memblocks_count--;
             break;
         }
     }
@@ -98,8 +92,17 @@ static int sceKernelFreeMemBlock_patched(SceUID uid) {
     return ret;
 }
 
+static void format_readable_size(int bytes, char *out, size_t out_size) {
+    if (bytes >= 1024*1024) {
+        snprintf(out, out_size, "%d%s", bytes / 1024 / 1024, "MB");
+    } else if (bytes >= 1024) {
+        snprintf(out, out_size, "%d%s", bytes / 1024, "kB");
+    } else {
+        snprintf(out, out_size, "%d%s", bytes, "B");
+    }
+}
 
-const char *getMemBlockTypeString(SceKernelMemBlockType type) {
+const char *vgi_get_memblock_type_text(SceKernelMemBlockType type) {
     switch (type) {
         case SCE_KERNEL_MEMBLOCK_TYPE_USER_RW_UNCACHE:
             return "UNCACHE";
@@ -116,91 +119,72 @@ const char *getMemBlockTypeString(SceKernelMemBlockType type) {
     }
 }
 
-void formatReadableSize(int bytes, char *out, size_t out_size) {
-    if (bytes > 1024*1024) {
-        snprintf(out, out_size, "%d%s", bytes / 1024 / 1024, "MB");
-    } else if (bytes > 1024) {
-        snprintf(out, out_size, "%d%s", bytes / 1024, "kB");
-    } else {
-        snprintf(out, out_size, "%d%s", bytes, "B");
-    }
+vgi_memblock_t *vgi_get_memblocks() {
+    return g_memblocks;
 }
 
-void drawMemory(int minX, int minY, int maxX, int maxY) {
-    int x = minX, y = minY;
-
+void vgi_draw_memory(int xoff, int yoff, int x2off, int y2off) {
     SceKernelFreeMemorySizeInfo info;
     info.size = sizeof(SceKernelFreeMemorySizeInfo);
     sceKernelGetFreeMemorySize(&info);
 
     char buf[16], buf2[16], buf3[16];
-    char buf4[16], buf5[16], buf6[16];
-    formatReadableSize(info.size_user, buf, 16);
-    formatReadableSize(info.size_cdram, buf2, 16);
-    formatReadableSize(info.size_phycont, buf3, 16);
-    formatReadableSize(g_startFreeMem.size_user, buf4, 16);
-    formatReadableSize(g_startFreeMem.size_cdram, buf5, 16);
-    formatReadableSize(g_startFreeMem.size_phycont, buf6, 16);
-    osdDrawStringF(x, y,  "Free RAM:  %s / %s    VRAM: %s / %s    PHYCONT: %s / %s",
-                            buf, buf4, buf2, buf5, buf3, buf6);
+    char buf4[32], buf5[16], buf6[16];
+    format_readable_size(info.size_user, buf, sizeof(buf));
+    format_readable_size(info.size_cdram, buf2, sizeof(buf2));
+    format_readable_size(info.size_phycont, buf3, sizeof(buf3));
+    format_readable_size(g_start_free_mem.size_user, buf4, sizeof(buf4));
+    format_readable_size(g_start_free_mem.size_cdram, buf5, sizeof(buf5));
+    format_readable_size(g_start_free_mem.size_phycont, buf6, sizeof(buf6));
+    vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 0),
+            "Free RAM:  %s / %s    VRAM: %s / %s    PHYCONT: %s / %s",
+            buf, buf4, buf2, buf5, buf3, buf6);
 
     struct malloc_managed_size ms;
     malloc_stats_fast(&ms);
-    formatReadableSize(ms.current_system_size - ms.current_inuse_size, buf, 16);
-    formatReadableSize(ms.current_system_size, buf2, 16);
-    formatReadableSize(ms.max_system_size, buf3, 16);
-    osdDrawStringF(x, y += osdGetLineHeight(),  "Free heap: %s / %s (max. %s)",
-                            buf, buf2, buf3);
+    format_readable_size(ms.current_system_size - ms.current_inuse_size, buf, sizeof(buf));
+    format_readable_size(ms.current_system_size, buf2, sizeof(buf2));
+    format_readable_size(ms.max_system_size, buf3, sizeof(buf3));
+    snprintf(buf4, sizeof(buf4), " - user_malloc_init():0x%lX", g_custom_heap_init_fn_ptr);
+    vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 1),
+            "Free heap: %s / %s (max. %s) - %s impl.%s",
+            buf, buf2, buf3,
+            g_has_custom_heap_impl ? "custom" : "native",
+            g_has_custom_heap_impl ? buf4 : "");
 
-    osdDrawStringF(x, y += osdGetLineHeight() * 1.5f,
-                    "Allocated MemBlocks (%d):", g_memBlocksCount);
-    osdDrawStringF(x += 10, y += osdGetLineHeight() * 1.5f,
-                    "  type          UID         base        size");
+    vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 2),
+            "Allocated MemBlocks (%d):", g_memblocks_count);
+    vgi_gui_printf(GUI_ANCHOR_LX(xoff + 10, 0), GUI_ANCHOR_TY(yoff, 3.5f),
+            "  type          UID         base        size");
 
-    // Scrollable section
-    y += osdGetLineHeight() * 0.5f;
-    drawScrollIndicator(maxX - osdGetTextWidth("xx"), y + osdGetLineHeight(), 0, g_scroll);
-
-    for (int i = g_scroll; i < MAX_MEM_BLOCKS; i++) {
-        if (y > maxY - osdGetLineHeight()*2) {
-            drawScrollIndicator(maxX - osdGetTextWidth("xx"), maxY - osdGetLineHeight() * 2,
-                                1, g_memBlocksCount - i);
-            break;
-        }
-
-        if (g_memBlocks[i].active) {
-            if (g_memBlocks[i].success)
-                osdSetTextColor(255, 255, 255, 255);
+    GUI_SCROLLABLE(MAX_MEM_BLOCKS, g_memblocks_count, 2,
+                    GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 5),
+                    GUI_ANCHOR_RX(x2off, 0), GUI_ANCHOR_BY(y2off, 0)) {
+        if (g_memblocks[i].active) {
+            if (g_memblocks[i].success)
+                vgi_gui_set_text_color(255, 255, 255, 255);
             else
-                osdSetTextColor(255, 0, 0, 255);
+                vgi_gui_set_text_color(255, 0, 0, 255);
 
-            formatReadableSize(g_memBlocks[i].size, buf, 32);
-            osdDrawStringF(x, y += osdGetLineHeight(), "'%s'", g_memBlocks[i].name);
-            osdDrawStringF(maxX - osdGetTextWidth(buf) - 40, y, "%s", buf);
-            osdDrawStringF(x + 24, y += osdGetLineHeight(), "%-9s 0x%-10X 0x%-10X 0x%X B",
-                    getMemBlockTypeString(g_memBlocks[i].type),
-                    g_memBlocks[i].ret,
-                    g_memBlocks[i].base,
-                    g_memBlocks[i].size);
-            y += 5;
-        }
-    }
-
-    y += osdGetLineHeight();
-    if (y <= maxY - osdGetLineHeight()*2) {
-        // Print warning
-        if (g_hasCustomHeapImpl) {
-            osdDrawStringF(x, y += osdGetLineHeight(),  "Target is using custom heap impl.!");
-            osdDrawStringF(x, y += osdGetLineHeight(),  "Mem. blocks allocated in user_malloc_init()==0x%X are not shown!",
-                    g_customHeapInitFnPtr);
+            format_readable_size(g_memblocks[i].size, buf, sizeof(buf));
+            vgi_gui_printf(GUI_ANCHOR_LX(xoff, 1), GUI_ANCHOR_TY(yoff, 5 + 2 * (i - g_scroll)),
+                    "'%s'", g_memblocks[i].name);
+            vgi_gui_printf(GUI_ANCHOR_RX(x2off + 40, strlen(buf)), GUI_ANCHOR_TY(yoff, 5 + 2 * (i - g_scroll)),
+                    "%s", buf);
+            vgi_gui_printf(GUI_ANCHOR_LX(xoff, 1), GUI_ANCHOR_TY(yoff, 6 + 2 * (i - g_scroll)),
+                    "%-9s 0x%-10X 0x%-10X 0x%X B",
+                    vgi_get_memblock_type_text(g_memblocks[i].type),
+                    g_memblocks[i].ret,
+                    g_memblocks[i].base,
+                    g_memblocks[i].size);
         }
     }
 }
 
-void setupMemory() {
+void vgi_setup_memory() {
     // poll free mem
-    g_startFreeMem.size = sizeof(SceKernelFreeMemorySizeInfo);
-    sceKernelGetFreeMemorySize(&g_startFreeMem);
+    g_start_free_mem.size = sizeof(SceKernelFreeMemorySizeInfo);
+    sceKernelGetFreeMemorySize(&g_start_free_mem);
 
     // is using custom malloc?
     struct process_param *pparam = (struct process_param *)sceKernelGetProcessParam(); // 0x2BE3E066
@@ -208,10 +192,10 @@ void setupMemory() {
             && pparam->hldr_2C
             && pparam->hldr_2C->callback_table1
             && pparam->hldr_2C->callback_table1->user_malloc_init) {
-        g_hasCustomHeapImpl = true;
-        g_customHeapInitFnPtr = (uint32_t)pparam->hldr_2C->callback_table1->user_malloc_init;
+        g_has_custom_heap_impl = true;
+        g_custom_heap_init_fn_ptr = (uint32_t)pparam->hldr_2C->callback_table1->user_malloc_init;
     }
 
-    hookFunctionImport(0xB9D5EBDE, HOOK_SCE_KERNEL_ALLOC_MEM_BLOCK, sceKernelAllocMemBlock_patched);
-    hookFunctionImport(0xA91E15EE, HOOK_SCE_KERNEL_FREE_MEM_BLOCK, sceKernelFreeMemBlock_patched);
+    HOOK_FUNCTION_IMPORT(0xB9D5EBDE, HOOK_SCE_KERNEL_ALLOC_MEM_BLOCK, sceKernelAllocMemBlock_patched);
+    HOOK_FUNCTION_IMPORT(0xA91E15EE, HOOK_SCE_KERNEL_FREE_MEM_BLOCK, sceKernelFreeMemBlock_patched);
 }

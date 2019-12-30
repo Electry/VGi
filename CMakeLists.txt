@@ -14,9 +14,13 @@ include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-q -Wall -O3 -std=gnu99")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions")
 
+# VitaGrafix parser
+add_definitions(-DBUILD_VITAGRAFIX)
+
 add_executable(${PROJECT_NAME}
   src/main.c
-  src/osd.c
+  src/gui.c
+  src/log.c
   src/core/appinfo.c
   src/core/graphics.c
   src/core/graphics_rt.c
@@ -30,6 +34,17 @@ add_executable(${PROJECT_NAME}
   src/core/threads.c
   src/core/input.c
   src/core/device.c
+  src/net/net.c
+  src/net/net.c
+  src/net/cmd.c
+  src/net/cmd_def.c
+  src/net/cmd_def_mem.c
+  src/net/cmd_def_gxm.c
+  src/interpreter/interpreter.c
+  src/interpreter/op_datatype.c
+  src/interpreter/op_encode.c
+  src/interpreter/op_math.c
+  src/interpreter/parser.c
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -47,6 +62,10 @@ target_link_libraries(${PROJECT_NAME}
   SceLibKernel_stub
   SceGxm_stub
   SceProcessmgr_stub
+  SceNet_stub_weak
+  SceNetCtl_stub_weak
+  SceKernelThreadMgr_stub
+  SceSysmodule_stub
 )
 
 set_target_properties(${PROJECT_NAME}

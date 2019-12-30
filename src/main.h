@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#define VGi_VERSION  "v1.0"
+#define VGi_VERSION  "v2.0"
 
 #define BUTTONS_FAST_MOVE_DELAY 500000
 
@@ -18,6 +18,7 @@
 #define MAX_VIEWPORTS              64
 #define MAX_MEM_BLOCKS             256
 #define MAX_THREADS                64
+#define MAX_PROGRAMS               128
 #define MAX_PROGRAM_PARAMETERS     128
 
 typedef enum {
@@ -54,7 +55,15 @@ typedef enum {
     HOOK_SCE_GXM_SET_VIEWPORT,
     HOOK_SCE_GXM_SET_DEFAULT_REGION_CLIP_AND_VIEWPORT,
     // graphics_cg.c
-    HOOK_SCE_GXM_PROGRAM_FIND_PARAMETER_BY_NAME,
+    HOOK_SCE_GXM_RESERVE_VERTEX_DEFAULT_UNIFORM_BUFFER,
+    HOOK_SCE_GXM_RESERVE_FRAGMENT_DEFAULT_UNIFORM_BUFFER,
+    HOOK_SCE_GXM_SET_VERTEX_DEFAULT_UNIFORM_BUFFER,
+    HOOK_SCE_GXM_SET_FRAGMENT_DEFAULT_UNIFORM_BUFFER,
+    HOOK_SCE_GXM_SET_VERTEX_UNIFORM_BUFFER,
+    HOOK_SCE_GXM_SET_FRAGMENT_UNIFORM_BUFFER,
+    HOOK_SCE_GXM_END_SCENE,
+    HOOK_SCE_GXM_SET_VERTEX_PROGRAM,
+    HOOK_SCE_GXM_SET_FRAGMENT_PROGRAM,
     // memory.c
     HOOK_SCE_KERNEL_ALLOC_MEM_BLOCK,
     HOOK_SCE_KERNEL_FREE_MEM_BLOCK,
@@ -79,7 +88,7 @@ typedef enum {
     HOOK_SCE_POWER_SET_CONFIGURATION_MODE,
     // ----------
     HOOK_MAX
-} VGi_Hooks;
+} vgi_hook_t;
 
 typedef enum {
     SECTION_MENU = 0,
@@ -97,7 +106,22 @@ typedef enum {
     SECTION_INPUT,
     SECTION_DEVICE,
     SECTION_MAX
-} VGi_Section;
+} vgi_section_t;
+
+// core/memory.c
+typedef struct {
+    uint8_t success;
+    uint8_t active;
+    char name[128];
+    SceKernelMemBlockType type;
+    int size;
+    SceUID ret;
+    void *base;
+} vgi_memblock_t;
+
+#define HOOK_FUNCTION_IMPORT(nid, id, func)                                   \
+    g_hooks[(id)] = taiHookFunctionImport(&g_hookrefs[(id)], TAI_MAIN_MODULE, \
+                                        TAI_ANY_LIBRARY, (nid), (func));
 
 extern uint8_t g_scroll;
 extern uint8_t g_visible;
@@ -105,44 +129,56 @@ extern uint8_t g_visible;
 extern SceUID g_hooks[];
 extern tai_hook_ref_t g_hookrefs[];
 
-void hookFunctionImport(uint32_t nid, uint32_t id, const void *func);
-void drawScrollIndicator(int x, int y, uint8_t scroll_down, int count);
+extern tai_module_info_t g_app_tai_info;
+extern SceKernelModuleInfo g_app_sce_info;
+extern char g_app_titleid[];
 
-void setupAppInfo();
-void setupGraphics();
-void setupGraphicsRT();
-void setupGraphicsCS();
-void setupGraphicsDSS();
-void setupGraphicsTex();
-void setupGraphicsScenes();
-void setupGraphicsMisc();
-void setupGraphicsCg();
-void setupMemory();
-void setupThreads();
-void setupInput();
-void setupDevice();
+void vgi_setup_appinfo();
+void vgi_setup_graphics();
+void vgi_setup_graphics_rt();
+void vgi_setup_graphics_cs();
+void vgi_setup_graphics_dss();
+void vgi_setup_graphics_tex();
+void vgi_setup_graphics_scenes();
+void vgi_setup_graphics_misc();
+void vgi_setup_graphics_cg();
+void vgi_setup_memory();
+void vgi_setup_threads();
+void vgi_setup_input();
+void vgi_setup_device();
 
-void drawAppInfo(int minX, int minY, int maxX, int maxY);
-void drawGraphics(int minX, int minY, int maxX, int maxY, const SceDisplayFrameBuf *pParam);
-void drawGraphicsRT(int minX, int minY, int maxX, int maxY);
-void drawGraphicsCS(int minX, int minY, int maxX, int maxY);
-void drawGraphicsDSS(int minX, int minY, int maxX, int maxY);
-void drawGraphicsTex(int minX, int minY, int maxX, int maxY);
-void drawGraphicsScenes(int minX, int minY, int maxX, int maxY);
-void drawGraphicsMisc(int minX, int minY, int maxX, int maxY);
-void drawGraphicsCg(int minX, int minY, int maxX, int maxY);
-void drawMemory(int minX, int minY, int maxX, int maxY);
-void drawThreads(int minX, int minY, int maxX, int maxY);
-void drawInput(int minX, int minY, int maxX, int maxY);
-void drawDevice(int minX, int minY, int maxX, int maxY);
+void vgi_draw_appinfo(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_graphics(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_graphics_rt(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_graphics_cs(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_graphics_dss(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_graphics_tex(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_graphics_scenes(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_graphics_misc(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_graphics_cg(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_memory(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_threads(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_input(int xoff, int yoff, int x2off, int y2off);
+void vgi_draw_device(int xoff, int yoff, int x2off, int y2off);
 
-void checkButtonsGraphics(uint32_t buttons_now, uint32_t buttons);
+void vgi_check_buttons_graphics(uint32_t buttons_now, uint32_t buttons);
+
+const char *vgi_get_memblock_type_text(SceKernelMemBlockType type);
+vgi_memblock_t *vgi_get_memblocks();
+
+void vgi_dump_appinfo();
+void vgi_dump_graphics();
+void vgi_dump_graphics_rt();
+void vgi_dump_graphics_cs();
+void vgi_dump_graphics_dss();
+void vgi_dump_graphics_tex();
+void vgi_dump_graphics_scenes();
+void vgi_dump_graphics_misc();
+void vgi_dump_graphics_cg();
+void vgi_dump_graphics_unibuf(const SceGxmProgram *program);
+void vgi_dump_device();
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
-
-#define SCE_POWER_CONFIGURATION_MODE_A 0x00000080U
-#define SCE_POWER_CONFIGURATION_MODE_B 0x00000800U
-#define SCE_POWER_CONFIGURATION_MODE_C 0x00010880U
 
 #endif

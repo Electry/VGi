@@ -1,93 +1,112 @@
 #include <vitasdk.h>
 #include <taihen.h>
 
-#include "../osd.h"
+#include "../gui.h"
 #include "../main.h"
+#include "../net/cmd.h"
 
 typedef struct {
     uint8_t active;
     uint8_t success;
     SceGxmRenderTarget *ptr;
     SceGxmRenderTargetParams params;
-    SceUID driverMemBlockBeforeCreate;
-} VGi_RenderTarget;
+    SceUID driver_memblock_before_create;
+} vgi_render_target_t;
 
-static VGi_RenderTarget g_renderTargets[MAX_RENDER_TARGETS] = {0};
-static uint32_t g_renderTargetsCount = 0;
+static vgi_render_target_t g_render_targets[MAX_RENDER_TARGETS] = {0};
+static int g_render_targets_count = 0;
 
 static int sceGxmCreateRenderTarget_patched(
-            const SceGxmRenderTargetParams *params,
-            SceGxmRenderTarget *renderTarget) {
+        const SceGxmRenderTargetParams *params,
+        SceGxmRenderTarget *renderTarget
+) {
     SceUID dmb = params->driverMemBlock;
     int ret = TAI_CONTINUE(int, g_hookrefs[HOOK_SCE_GXM_CREATE_RENDER_TARGET],
                             params, renderTarget);
 
     for (int i = 0; i < MAX_RENDER_TARGETS; i++) {
-        if (!g_renderTargets[i].active) {
-            g_renderTargets[i].active = 1;
-            g_renderTargets[i].success = ret == SCE_OK;
-            g_renderTargets[i].ptr = renderTarget;
-            g_renderTargets[i].driverMemBlockBeforeCreate = dmb;
-            memcpy(&(g_renderTargets[i].params), params, sizeof(SceGxmRenderTargetParams));
-            g_renderTargetsCount++;
+        if (!g_render_targets[i].active) {
+            g_render_targets[i].active = 1;
+            g_render_targets[i].success = ret == SCE_OK;
+            g_render_targets[i].ptr = renderTarget;
+            g_render_targets[i].driver_memblock_before_create = dmb;
+            memcpy(&(g_render_targets[i].params), params, sizeof(SceGxmRenderTargetParams));
+            g_render_targets_count++;
             break;
         }
     }
 
     return ret;
 }
+
 static int sceGxmDestroyRenderTarget_patched(SceGxmRenderTarget *renderTarget) {
     int ret = TAI_CONTINUE(int, g_hookrefs[HOOK_SCE_GXM_DESTROY_RENDER_TARGET], renderTarget);
     if (ret != SCE_OK)
         return ret;
 
     for (int i = 0; i < MAX_RENDER_TARGETS; i++) {
-        if (g_renderTargets[i].ptr == renderTarget && g_renderTargets[i].active) {
-            g_renderTargets[i].active = 0;
-             g_renderTargetsCount--;
-             break;
+        if (g_render_targets[i].ptr == renderTarget && g_render_targets[i].active) {
+            g_render_targets[i].active = 0;
+            g_render_targets_count--;
+            break;
         }
     }
 
     return ret;
 }
 
-void drawGraphicsRT(int minX, int minY, int maxX, int maxY) {
-    int x = minX, y = minY;
-    osdDrawStringF(x, y, "Active Render Targets (%d):", g_renderTargetsCount);
-    osdDrawStringF(x += 10, y += osdGetLineHeight() * 1.5f,
-                        "   WxH         MSAA   scenesPF    memBlockUID");
+void vgi_dump_graphics_rt() {
+    char msg[128];
+    snprintf(msg, sizeof(msg), "Active Render Targets (%d/%d):\n",
+            g_render_targets_count, MAX_RENDER_TARGETS);
+    vgi_cmd_send_msg(msg);
 
-    // Scrollable section
-    y += osdGetLineHeight() * 0.5f;
-    drawScrollIndicator(maxX - osdGetTextWidth("xx"), y + osdGetLineHeight(), 0, g_scroll);
-
-    for (int i = g_scroll; i < MAX_RENDER_TARGETS; i++) {
-        if (y > maxY - osdGetLineHeight()) {
-            drawScrollIndicator(maxX - osdGetTextWidth("xx"), maxY - osdGetLineHeight() * 2,
-                                1, g_renderTargetsCount - i);
-            break;
-        }
-
-        if (g_renderTargets[i].active) {
-            if (g_renderTargets[i].success)
-                osdSetTextColor(255, 255, 255, 255);
-            else
-                osdSetTextColor(255, 0, 0, 255);
-
-            osdDrawStringF(x, y += osdGetLineHeight(), "%4dx%-10d %-8s %-8d 0x%08X %s",
-                    g_renderTargets[i].params.width,
-                    g_renderTargets[i].params.height,
-                    g_renderTargets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_4X ? "4x" :
-                    (g_renderTargets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_2X ? "2x" : ""),
-                    g_renderTargets[i].params.scenesPerFrame,
-                    g_renderTargets[i].params.driverMemBlock,
-                    g_renderTargets[i].driverMemBlockBeforeCreate == 0xFFFFFFFF ? "(A)" : "");
+    for (int i = 0; i < MAX_RENDER_TARGETS; i++) {
+        if (g_render_targets[i].active) {
+            snprintf(msg, sizeof(msg),
+                    "  %4dx%-4d MSAA=%-2s spf=%d mem_uid=0x%08X %s%s\n",
+                    g_render_targets[i].params.width,
+                    g_render_targets[i].params.height,
+                    g_render_targets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_4X ? "4x" :
+                    (g_render_targets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_2X ? "2x" : "no"),
+                    g_render_targets[i].params.scenesPerFrame,
+                    g_render_targets[i].params.driverMemBlock,
+                    g_render_targets[i].driver_memblock_before_create == 0xFFFFFFFF ? "(A)" : "",
+                    g_render_targets[i].success ? "" : " - FAIL!");
+            vgi_cmd_send_msg(msg);
         }
     }
 }
 
-void setupGraphicsRT() {
-    hookFunctionImport(0x207AF96B, HOOK_SCE_GXM_CREATE_RENDER_TARGET, sceGxmCreateRenderTarget_patched);
-    hookFunctionImport(0x0B94C50A, HOOK_SCE_GXM_DESTROY_RENDER_TARGET, sceGxmDestroyRenderTarget_patched);
+void vgi_draw_graphics_rt(int xoff, int yoff, int x2off, int y2off) {
+    vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 0),
+            "Active Render Targets (%d):", g_render_targets_count);
+    vgi_gui_printf(GUI_ANCHOR_LX(xoff + 10, 0), GUI_ANCHOR_TY(yoff, 1.5f),
+            "   WxH         MSAA   scenesPF    memBlockUID");
+
+    GUI_SCROLLABLE(MAX_RENDER_TARGETS, g_render_targets_count, 1,
+                    GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 3),
+                    GUI_ANCHOR_RX(x2off, 0), GUI_ANCHOR_BY(y2off, 0)) {
+        if (g_render_targets[i].active) {
+            if (g_render_targets[i].success)
+                vgi_gui_set_text_color(255, 255, 255, 255);
+            else
+                vgi_gui_set_text_color(255, 0, 0, 255);
+
+            vgi_gui_printf(GUI_ANCHOR_LX(xoff, 1), GUI_ANCHOR_TY(yoff, 3 + (i - g_scroll)),
+                    "%4dx%-10d %-8s %-8d 0x%08X %s",
+                    g_render_targets[i].params.width,
+                    g_render_targets[i].params.height,
+                    g_render_targets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_4X ? "4x" :
+                    (g_render_targets[i].params.multisampleMode == SCE_GXM_MULTISAMPLE_2X ? "2x" : ""),
+                    g_render_targets[i].params.scenesPerFrame,
+                    g_render_targets[i].params.driverMemBlock,
+                    g_render_targets[i].driver_memblock_before_create == 0xFFFFFFFF ? "(A)" : "");
+        }
+    }
+}
+
+void vgi_setup_graphics_rt() {
+    HOOK_FUNCTION_IMPORT(0x207AF96B, HOOK_SCE_GXM_CREATE_RENDER_TARGET, sceGxmCreateRenderTarget_patched);
+    HOOK_FUNCTION_IMPORT(0x0B94C50A, HOOK_SCE_GXM_DESTROY_RENDER_TARGET, sceGxmDestroyRenderTarget_patched);
 }

@@ -1,56 +1,57 @@
 #include <vitasdk.h>
 #include <taihen.h>
 
-#include "../osd.h"
+#include "../gui.h"
 #include "../main.h"
+#include "../net/cmd.h"
 
 typedef struct {
     void *context;
-    unsigned int xMin;
-    unsigned int yMin;
-    unsigned int xMax;
-    unsigned int yMax;
-} VGi_RegionClip;
+    unsigned int x_min;
+    unsigned int y_min;
+    unsigned int x_max;
+    unsigned int y_max;
+} vgi_region_clip_t;
 
 typedef struct {
     void *context;
-    float xOffset;
-    float xScale;
-    float yOffset;
-    float yScale;
-    float zOffset;
-    float zScale;
-} VGi_Viewport;
+    float x_offset;
+    float x_scale;
+    float y_offset;
+    float y_scale;
+    float z_offset;
+    float z_scale;
+} vgi_viewport_t;
 
-static VGi_RegionClip g_regionClips[MAX_REGION_CLIPS] = {0};
-static uint32_t g_regionClipsCount = 0;
+static vgi_region_clip_t g_region_clips[MAX_REGION_CLIPS] = {0};
+static int g_region_clips_count = 0;
 
-static VGi_Viewport g_viewports[MAX_VIEWPORTS] = {0};
-static uint32_t g_viewportsCount = 0;
+static vgi_viewport_t g_viewports[MAX_VIEWPORTS] = {0};
+static int g_viewports_count = 0;
 
-static void addRegionClip(
+static void add_region_clip(
         SceGxmContext *context,
         unsigned int xMin,
         unsigned int yMin,
         unsigned int xMax,
-        unsigned int yMax) {
-
+        unsigned int yMax
+) {
     for (int i = 0; i < MAX_REGION_CLIPS; i++) {
-        if (g_regionClips[i].context == context &&
-                g_regionClips[i].xMin == xMin &&
-                g_regionClips[i].yMin == yMin &&
-                g_regionClips[i].xMax == xMax &&
-                g_regionClips[i].yMax == yMax) {
+        if (g_region_clips[i].context == context &&
+                g_region_clips[i].x_min == xMin &&
+                g_region_clips[i].y_min == yMin &&
+                g_region_clips[i].x_max == xMax &&
+                g_region_clips[i].y_max == yMax) {
             break; // Skip already known regions
         }
 
-        if (!g_regionClips[i].context) {
-            g_regionClipsCount++;
-            g_regionClips[i].context = context;
-            g_regionClips[i].xMin = xMin;
-            g_regionClips[i].yMin = yMin;
-            g_regionClips[i].xMax = xMax;
-            g_regionClips[i].yMax = yMax;
+        if (!g_region_clips[i].context) {
+            g_region_clips_count++;
+            g_region_clips[i].context = context;
+            g_region_clips[i].x_min = xMin;
+            g_region_clips[i].y_min = yMin;
+            g_region_clips[i].x_max = xMax;
+            g_region_clips[i].y_max = yMax;
             break;
         }
     }
@@ -62,23 +63,20 @@ static void sceGxmSetRegionClip_patched(
         unsigned int xMin,
         unsigned int yMin,
         unsigned int xMax,
-        unsigned int yMax) {
-
+        unsigned int yMax
+) {
     TAI_CONTINUE(void, g_hookrefs[HOOK_SCE_GXM_SET_REGION_CLIP],
                     context, mode, xMin, yMin, xMax, yMax);
 
-    addRegionClip(context, xMin, yMin, xMax, yMax);
+    add_region_clip(context, xMin, yMin, xMax, yMax);
 }
 
 static void sceGxmSetViewport_patched(
         SceGxmContext *context,
-        float xOffset,
-        float xScale,
-        float yOffset,
-        float yScale,
-        float zOffset,
-        float zScale) {
-    
+        float xOffset, float xScale,
+        float yOffset, float yScale,
+        float zOffset, float zScale
+) {
     // Haxxx
     uint32_t d32_1, d32_2, d32_3, d32_4, d32_5, d32_6;
     memcpy(&d32_1, &xOffset, sizeof(float));
@@ -93,24 +91,24 @@ static void sceGxmSetViewport_patched(
 
     for (int i = 0; i < MAX_VIEWPORTS; i++) {
         if (g_viewports[i].context == context &&
-                fabs(g_viewports[i].xOffset - xOffset) < 0.5f &&
-                fabs(g_viewports[i].xScale - xScale) < 0.5f &&
-                fabs(g_viewports[i].yOffset - yOffset) < 0.5f &&
-                fabs(g_viewports[i].yScale - yScale) < 0.5f &&
-                fabs(g_viewports[i].zOffset - zOffset) < 0.5f &&
-                fabs(g_viewports[i].zScale - zScale) < 0.5f) {
+                fabs(g_viewports[i].x_offset - xOffset) < 0.5f &&
+                fabs(g_viewports[i].x_scale - xScale) < 0.5f &&
+                fabs(g_viewports[i].y_offset - yOffset) < 0.5f &&
+                fabs(g_viewports[i].y_scale - yScale) < 0.5f &&
+                fabs(g_viewports[i].z_offset - zOffset) < 0.5f &&
+                fabs(g_viewports[i].z_scale - zScale) < 0.5f) {
             break; // Skip already known viewports
         }
 
         if (!g_viewports[i].context) {
-            g_viewportsCount++;
+            g_viewports_count++;
             g_viewports[i].context = context;
-            g_viewports[i].xOffset = xOffset;
-            g_viewports[i].xScale = xScale;
-            g_viewports[i].yOffset = yOffset;
-            g_viewports[i].yScale = yScale;
-            g_viewports[i].zOffset = zOffset;
-            g_viewports[i].zScale = zScale;
+            g_viewports[i].x_offset = xOffset;
+            g_viewports[i].x_scale = xScale;
+            g_viewports[i].y_offset = yOffset;
+            g_viewports[i].y_scale = yScale;
+            g_viewports[i].z_offset = zOffset;
+            g_viewports[i].z_scale = zScale;
             break;
         }
     }
@@ -119,65 +117,95 @@ static void sceGxmSetViewport_patched(
 static void sceGxmSetDefaultRegionClipAndViewport_patched(
         SceGxmContext *context,
         unsigned int xMax,
-        unsigned int yMax) {
+        unsigned int yMax
+) {
     TAI_CONTINUE(void, g_hookrefs[HOOK_SCE_GXM_SET_DEFAULT_REGION_CLIP_AND_VIEWPORT],
                     context, xMax, yMax);
 
-    addRegionClip(context, 0, 0, xMax, yMax);
+    add_region_clip(context, 0, 0, xMax, yMax);
 }
 
-void drawGraphicsMisc(int minX, int minY, int maxX, int maxY) {
-    int x = minX, y = minY;
-    osdDrawStringF(x, y, "Gxm Region Clips (%d):", g_regionClipsCount);
+void vgi_dump_graphics_misc() {
+    char msg[128];
+    snprintf(msg, sizeof(msg), "Region Clips (%d/%d):\n",
+            g_region_clips_count, MAX_REGION_CLIPS);
+    vgi_cmd_send_msg(msg);
 
-    // Scrollable section
-    x += 20;
-    y += osdGetLineHeight() * 0.5f;
-    drawScrollIndicator(maxX - osdGetTextWidth("xx"), y + osdGetLineHeight(), 0, g_scroll);
-
-    for (int i = g_scroll; i < MAX_REGION_CLIPS; i++) {
-        if (y > minY + ((maxY - minY) / 2) - osdGetLineHeight()) {
-            drawScrollIndicator(maxX - osdGetTextWidth("xx"), minY + ((maxY - minY) / 2) - osdGetLineHeight() * 2,
-                                1, g_regionClipsCount - i);
-            break;
-        }
-
-        if (g_regionClips[i].context) {
-            osdDrawStringF(x, y += osdGetLineHeight(), "0x%X (%d, %d, %d, %d)",
-                    g_regionClips[i].context,
-                    g_regionClips[i].xMin,
-                    g_regionClips[i].yMin,
-                    g_regionClips[i].xMax,
-                    g_regionClips[i].yMax);
+    for (int i = 0; i < MAX_REGION_CLIPS; i++) {
+        if (g_region_clips[i].context) {
+            snprintf(msg, sizeof(msg),
+                    "  0x%lX (%d, %d, %d, %d)\n",
+                    (uint32_t)g_region_clips[i].context,
+                    g_region_clips[i].x_min,
+                    g_region_clips[i].y_min,
+                    g_region_clips[i].x_max,
+                    g_region_clips[i].y_max);
+            vgi_cmd_send_msg(msg);
         }
     }
 
-    y = minY + ((maxY - minY) / 2);
-    osdDrawStringF(10, y, "Gxm Viewports (%d):", g_viewportsCount);
-    y += osdGetLineHeight() * 0.5f;
+    snprintf(msg, sizeof(msg), "Viewports (%d/%d):\n",
+            g_viewports_count, MAX_VIEWPORTS);
+    vgi_cmd_send_msg(msg);
 
-    for (int i = g_scroll; i < MAX_VIEWPORTS; i++) {
-        if (y > maxY - osdGetLineHeight()) {
-            drawScrollIndicator(maxX - osdGetTextWidth("xx"), maxY - osdGetLineHeight() * 2,
-                                1, g_viewportsCount - i);
-            break;
-        }
-
+    for (int i = 0; i < MAX_VIEWPORTS; i++) {
         if (g_viewports[i].context) {
-            osdDrawStringF(x, y += 22, "0x%X (%.1f, %.1f, %.1f, %.1f, %.1f, %.1f)",
-                    g_viewports[i].context,
-                    g_viewports[i].xOffset,
-                    g_viewports[i].xScale,
-                    g_viewports[i].yOffset,
-                    g_viewports[i].yScale,
-                    g_viewports[i].zOffset,
-                    g_viewports[i].zScale);
+            snprintf(msg, sizeof(msg),
+                    "  0x%lX (%.1f, %.1f, %.1f, %.1f, %.1f, %.1f)\n",
+                    (uint32_t)g_viewports[i].context,
+                    g_viewports[i].x_offset,
+                    g_viewports[i].x_scale,
+                    g_viewports[i].y_offset,
+                    g_viewports[i].y_scale,
+                    g_viewports[i].z_offset,
+                    g_viewports[i].z_scale);
+            vgi_cmd_send_msg(msg);
         }
     }
 }
 
-void setupGraphicsMisc() {
-    hookFunctionImport(0x70C86868, HOOK_SCE_GXM_SET_REGION_CLIP, sceGxmSetRegionClip_patched);
-    hookFunctionImport(0x3EB3380B, HOOK_SCE_GXM_SET_VIEWPORT, sceGxmSetViewport_patched);
-    hookFunctionImport(0x60CF708E, HOOK_SCE_GXM_SET_DEFAULT_REGION_CLIP_AND_VIEWPORT, sceGxmSetDefaultRegionClipAndViewport_patched);
+void vgi_draw_graphics_misc(int xoff, int yoff, int x2off, int y2off) {
+    vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 0),
+            "Region Clips (%d):", g_region_clips_count);
+
+    GUI_SCROLLABLE(MAX_REGION_CLIPS, g_region_clips_count, 1,
+                    GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 1.5f),
+                    GUI_ANCHOR_RX(x2off, 0), GUI_ANCHOR_CY(0) - GUI_FONT_H) {
+        if (g_region_clips[i].context) {
+            vgi_gui_printf(GUI_ANCHOR_LX(xoff, 1), GUI_ANCHOR_TY(yoff, 1.5f + (i - g_scroll)),
+                    "0x%X (%d, %d, %d, %d)",
+                    g_region_clips[i].context,
+                    g_region_clips[i].x_min,
+                    g_region_clips[i].y_min,
+                    g_region_clips[i].x_max,
+                    g_region_clips[i].y_max);
+        }
+    }
+
+    vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_CY(0),
+            "Viewports (%d):", g_viewports_count);
+
+    GUI_SCROLLABLE(MAX_VIEWPORTS, g_viewports_count, 1,
+                    GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_CY(0) + GUI_FONT_H,
+                    GUI_ANCHOR_RX(x2off, 0), GUI_ANCHOR_BY(y2off, 0)) {
+        if (g_viewports[i].context) {
+            vgi_gui_printf(
+                    GUI_ANCHOR_LX(xoff, 1),
+                    GUI_ANCHOR_CY(0) + GUI_ANCHOR_TY(0, 1.5f + (i - g_scroll)),
+                    "0x%X (%.1f, %.1f, %.1f, %.1f, %.1f, %.1f)",
+                    g_viewports[i].context,
+                    g_viewports[i].x_offset,
+                    g_viewports[i].x_scale,
+                    g_viewports[i].y_offset,
+                    g_viewports[i].y_scale,
+                    g_viewports[i].z_offset,
+                    g_viewports[i].z_scale);
+        }
+    }
+}
+
+void vgi_setup_graphics_misc() {
+    HOOK_FUNCTION_IMPORT(0x70C86868, HOOK_SCE_GXM_SET_REGION_CLIP, sceGxmSetRegionClip_patched);
+    HOOK_FUNCTION_IMPORT(0x3EB3380B, HOOK_SCE_GXM_SET_VIEWPORT, sceGxmSetViewport_patched);
+    HOOK_FUNCTION_IMPORT(0x60CF708E, HOOK_SCE_GXM_SET_DEFAULT_REGION_CLIP_AND_VIEWPORT, sceGxmSetDefaultRegionClipAndViewport_patched);
 }
