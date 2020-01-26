@@ -46,14 +46,18 @@ void vgi_dump_appinfo() {
             "  TitleID:     %s [ %s ]\n"
             "  Module:      %s\n"
             "  Module path: %s\n"
-            "  Module NID:  0x%08lX\n",
+            "  Module NID:  0x%08lX\n"
+            "  .TEXT:       0x%p\n"
+            "  .DATA:       0x%p\n",
             g_app_title,
             g_app_stitle,
             g_app_content,
             g_app_titleid, g_app_region,
             g_app_tai_info.name,
             g_app_sce_info.path,
-            g_app_tai_info.module_nid);
+            g_app_tai_info.module_nid,
+            g_app_sce_info.segments[0].vaddr,
+            g_app_sce_info.segments[1].vaddr);
     vgi_cmd_send_msg(msg);
 }
 
@@ -66,6 +70,9 @@ void vgi_draw_appinfo(int xoff, int yoff, int x2off, int y2off) {
     vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 5), "Module:      %s", g_app_tai_info.name);
     vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 6), "Module path: %s", g_app_sce_info.path);
     vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 7), "Module NID:  0x%08X", g_app_tai_info.module_nid);
+
+    vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 9),  ".TEXT:       0x%p", g_app_sce_info.segments[0].vaddr);
+    vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 10), ".DATA:       0x%p", g_app_sce_info.segments[1].vaddr);
 }
 
 void vgi_setup_appinfo() {
