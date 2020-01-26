@@ -39,6 +39,7 @@ add_executable(${PROJECT_NAME}
   src/net/cmd.c
   src/net/cmd_def.c
   src/net/cmd_def_mem.c
+  src/net/cmd_def_hook.c
   src/net/cmd_def_gxm.c
   src/interpreter/interpreter.c
   src/interpreter/op_datatype.c

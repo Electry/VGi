@@ -26,7 +26,12 @@ static void cmd_print_help(char *arg) {
                      "  i          <vaddr>    <vgexpr>                         - Inject data to vaddr\n"
                      "  release    <id>                                        - Release injected data\n"
                      "\n"
-                     "Gxm:\n"
+                     "Hooks (experimental):\n"
+                     "  h          <vaddr>    [f]                              - Hook function and dump it's arguments when called\n"
+                     "                                                           (f = dump stack as well)\n"
+                     "  hr                                                     - Release function hook\n"
+                     "\n"
+                     "Gxm (experimental):\n"
                      "  listparams <gxp>                                       - List GXP shader parameters\n"
                      "  dumpparams <gxp>                                       - Dump GXP shader uniform buffer\n");
 }
@@ -66,6 +71,9 @@ static const vgi_cmd_definition_t CMD_DEFINITIONS[] = {
     {.name = "s",  .executor = &vgi_cmd_mem_search},
     {.name = "i",  .executor = &vgi_cmd_mem_inject_data},
     {.name = "release",  .executor = &vgi_cmd_mem_release_data},
+
+    {.name = "hr", .executor = &vgi_cmd_hook_dump_args_release},
+    {.name = "h", .executor = &vgi_cmd_hook_dump_args_hook},
 
     {.name = "listparams",  .executor = &vgi_cmd_gxm_listparams},
     {.name = "dumpparams",  .executor = &vgi_cmd_gxm_dumpparams}
