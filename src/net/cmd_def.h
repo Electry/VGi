@@ -25,6 +25,7 @@ void vgi_cmd_mem_release_data(char *arg);
 void vgi_cmd_mem_search(char *arg);
 
 void vgi_cmd_hook_dump_args_hook(char *arg);
+void vgi_cmd_hook_dump_deref_hook(char *arg);
 void vgi_cmd_hook_dump_args_release(char *arg);
 
 void vgi_cmd_gxm_listparams(char *arg);

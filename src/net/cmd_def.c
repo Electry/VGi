@@ -29,6 +29,8 @@ static void cmd_print_help(char *arg) {
                      "Hooks (experimental):\n"
                      "  h          <vaddr>    [f]                              - Hook function and dump it's arguments when called\n"
                      "                                                           (f = dump stack as well)\n"
+                     "  hd         <vaddr>    <register>    <offset>           - Hook function, dump it's arguments, stack, vfp and\n"
+                     "                                                           dereference *(DWORD *)(R<register> + <offset>)\n"
                      "  hr                                                     - Release function hook\n"
                      "\n"
                      "Gxm (experimental):\n"
@@ -73,6 +75,7 @@ static const vgi_cmd_definition_t CMD_DEFINITIONS[] = {
     {.name = "release",  .executor = &vgi_cmd_mem_release_data},
 
     {.name = "hr", .executor = &vgi_cmd_hook_dump_args_release},
+    {.name = "hd", .executor = &vgi_cmd_hook_dump_deref_hook},
     {.name = "h", .executor = &vgi_cmd_hook_dump_args_hook},
 
     {.name = "listparams",  .executor = &vgi_cmd_gxm_listparams},
