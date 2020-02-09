@@ -188,13 +188,8 @@ static int sceDisplaySetFrameBuf_patched(const SceDisplayFrameBuf *pParam, int s
         }
     }
 
-    if (!g_visible) {
-        // Draw net info
-        vgi_gui_set_back_color(0, 0, 0, 0);
-        vgi_gui_set_text_color(0, 255, 0, 255);
-        vgi_gui_printf(0, 0, vgi_cmd_is_client_connected() ? ":)" : ":(");
+    if (!g_visible)
         goto CONT;
-    }
 
     // Background
     vgi_gui_set_back_color(0, 0, 0, 225);
