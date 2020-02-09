@@ -145,7 +145,7 @@ void vgi_draw_memory(int xoff, int yoff, int x2off, int y2off) {
     format_readable_size(ms.current_system_size - ms.current_inuse_size, buf, sizeof(buf));
     format_readable_size(ms.current_system_size, buf2, sizeof(buf2));
     format_readable_size(ms.max_system_size, buf3, sizeof(buf3));
-    snprintf(buf4, sizeof(buf4), " - user_malloc_init():0x%lX", g_custom_heap_init_fn_ptr);
+    snprintf(buf4, sizeof(buf4), ": 0x%lX", g_custom_heap_init_fn_ptr);
     vgi_gui_printf(GUI_ANCHOR_LX(xoff, 0), GUI_ANCHOR_TY(yoff, 1),
             "Free heap: %s / %s (max. %s) - %s impl.%s",
             buf, buf2, buf3,
