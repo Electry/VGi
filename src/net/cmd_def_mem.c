@@ -98,8 +98,7 @@ void vgi_cmd_mem_inject_data(char *arg) {
     uint32_t pos = 0;
     intp_value_t patch_data;
     intp_status_t intp_ret = intp_evaluate(endptr, (uint32_t *)&pos, &patch_data);
-    if (intp_ret.code != INTP_STATUS_OK
-            || (patch_data.size != 4 && patch_data.size != 2 && patch_data.size != 1)) {
+    if (intp_ret.code != INTP_STATUS_OK) {
         snprintf(res_msg, RES_MSG_LEN, "Invalid format for arg 2: %d\n", intp_ret.code);
         vgi_cmd_send_msg(res_msg);
         return;
